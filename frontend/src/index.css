@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Tenor+Sans&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Tenor Sans', 'Playfair Display', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+
+  --color-ivory: #faf7f2;
+  --color-cream: #f5efe6;
+  --color-olive: #769055;
+  --color-olive-dark: #5e7343;
+  --color-olive-overlay: rgba(118,144,85,0.72);
+  --color-gold: #c9973a;
+  --color-gold-light: #e8c06a;
+  --color-charcoal: #2c2420;
+  --color-muted: #8c7b72;
+  --color-border: #e8d5c0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-ivory);
+  color: var(--color-charcoal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 3px;
+}
