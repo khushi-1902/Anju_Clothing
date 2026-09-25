@@ -4,6 +4,8 @@ import { ProductCard } from '../components/ProductCard'
 import { FilterDrawer, FilterIcon } from '../components/FilterDrawer'
 import { PRODUCTS, CATEGORIES } from '../data/products'
 import { useShop } from '../context/ShopContext'
+import { fetchProducts } from '../lib/api'
+import type { Product } from '../types'
 import {
   DEFAULT_FILTERS,
   applyFilters,
@@ -13,6 +15,19 @@ import {
   type ProductFilters,
 } from '../utils/productFilters'
 
+function getPaginationPages(current: number, total: number): (number | '...')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total]
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total]
+}
+
 export function AllProductsPage() {
   const { categorySlug } = useParams<{ categorySlug?: string }>()
   const [searchParams] = useSearchParams()
@@ -20,7 +35,6 @@ export function AllProductsPage() {
 
   const urlCategory = categorySlug || searchParams.get('category') || selectedCategory || 'all'
 
-  // All filter state lives in one object — this is what you'll send to the backend
   const [filters, setFilters] = useState<ProductFilters>({
     ...DEFAULT_FILTERS,
     category: urlCategory,
@@ -31,77 +45,107 @@ export function AllProductsPage() {
       setFilters(prev => ({ ...prev, category: urlCategory }))
     }
   }, [urlCategory])
+
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState<string>('alphabetical-az')
   const [currentPageNum, setCurrentPageNum] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  const [productsList, setProductsList] = useState<Product[]>([])
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const [totalPagesCount, setTotalPagesCount] = useState<number>(1)
 
   const itemsPerPage = 9
 
-  // Options + counts shown in the drawer.
-  // BACKEND: replace with the facets returned by your API (same FilterFacets shape).
   const facets = useMemo(() => getFacets(PRODUCTS, CATEGORIES), [])
 
-  // ── BACKEND HOOK-UP ─────────────────────────────────────────────────────────
-  // `filters`, `searchQuery`, `sortBy` and `currentPageNum` are the full query state.
-  // To switch to the API, build the query and fetch whenever it changes:
-  //
-  //   import { buildFilterQuery } from '../utils/productFilters'
-  //   const query = buildFilterQuery(filters, {
-  //     search: searchQuery, sort: sortBy, page: currentPageNum, limit: itemsPerPage,
-  //   })
-  //   useEffect(() => {
-  //     fetch(`/api/products?${query}`).then(r => r.json()).then(setResult)  // { products, total }
-  //   }, [query])
-  //
-  // Then render `result.products` and use `result.total` for the counts and pagination,
-  // instead of the client-side filtering below.
-  // ────────────────────────────────────────────────────────────────────────────
-
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-
-    return applyFilters(PRODUCTS, filters)
-      .filter(product => {
-        if (!q) return true
-        return (
-          product.name.toLowerCase().includes(q) ||
-          product.category.toLowerCase().includes(q) ||
-          (product.description && product.description.toLowerCase().includes(q))
-        )
-      })
-      .sort((a, b) => {
-        if (sortBy === 'alphabetical-az') return a.name.localeCompare(b.name)
-        if (sortBy === 'alphabetical-za') return b.name.localeCompare(a.name)
-        if (sortBy === 'price-low') return a.price - b.price
-        if (sortBy === 'price-high') return b.price - a.price
-        if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
-        return 0
-      })
-  }, [filters, searchQuery, sortBy])
-
-  // Any change to what's being shown sends the user back to page 1
+  // Any change to filters/search/sort resets to page 1
   useEffect(() => {
     setCurrentPageNum(1)
   }, [filters, searchQuery, sortBy])
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1
-  const paginatedProducts = filteredProducts.slice(
-    (currentPageNum - 1) * itemsPerPage,
-    currentPageNum * itemsPerPage
-  )
+  // Fetch from API
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+
+    fetchProducts({
+      page: currentPageNum,
+      limit: itemsPerPage,
+      category: filters.category,
+      search: searchQuery || filters.title,
+      sort: sortBy,
+      minPrice: filters.price?.[0],
+      maxPrice: filters.price?.[1],
+    })
+      .then(res => {
+        if (!cancelled) {
+          setProductsList(res.products)
+          setTotalCount(res.total)
+          setTotalPagesCount(res.totalPages)
+        }
+      })
+      .catch(() => {
+        // Fallback to local filtering if API unavailable
+        if (!cancelled) {
+          const q = searchQuery.trim().toLowerCase()
+          const localFiltered = applyFilters(PRODUCTS, filters)
+            .filter(product => {
+              if (!q) return true
+              return (
+                product.name.toLowerCase().includes(q) ||
+                product.category.toLowerCase().includes(q) ||
+                (product.description && product.description.toLowerCase().includes(q))
+              )
+            })
+            .sort((a, b) => {
+              if (sortBy === 'alphabetical-az') return a.name.localeCompare(b.name)
+              if (sortBy === 'alphabetical-za') return b.name.localeCompare(a.name)
+              if (sortBy === 'price-low') return a.price - b.price
+              if (sortBy === 'price-high') return b.price - a.price
+              if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+              return 0
+            })
+
+          const total = localFiltered.length
+          const pages = Math.ceil(total / itemsPerPage) || 1
+          setTotalCount(total)
+          setTotalPagesCount(pages)
+          setProductsList(
+            localFiltered.slice(
+              (currentPageNum - 1) * itemsPerPage,
+              currentPageNum * itemsPerPage
+            )
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentPageNum, itemsPerPage, filters, searchQuery, sortBy])
 
   const activeCount = countActiveFilters(filters)
   const chips = useMemo(() => getActiveFilterChips(filters, facets), [filters, facets])
 
   const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
+    if (page >= 1 && page <= totalPagesCount && page !== currentPageNum) {
       setCurrentPageNum(page)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
   const clearAllFilters = () => setFilters({ ...DEFAULT_FILTERS })
+
+  const paginationPages = useMemo(
+    () => getPaginationPages(currentPageNum, totalPagesCount),
+    [currentPageNum, totalPagesCount]
+  )
 
   return (
     <div className="min-h-screen py-8 sm:py-12 bg-white">
@@ -141,7 +185,7 @@ export function AllProductsPage() {
               <option value="featured">Featured</option>
               <option value="price-low">Price, low to high</option>
               <option value="price-high">Price, high to low</option>
-              <option value="rating">Best Rating</option>
+              <option value="newest">Newest First</option>
             </select>
           </div>
         </div>
@@ -149,7 +193,7 @@ export function AllProductsPage() {
         {/* Result count + active filter chips */}
         <div className="flex flex-wrap items-center gap-2 py-4 mb-4">
           <span className="text-xs text-muted mr-1" aria-live="polite">
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+            {totalCount} {totalCount === 1 ? 'product' : 'products'}
           </span>
 
           {chips.map(chip => (
@@ -198,7 +242,11 @@ export function AllProductsPage() {
         )}
 
         {/* 3-Column Responsive Product Grid */}
-        {paginatedProducts.length === 0 ? (
+        {loading ? (
+          <div className="py-20 text-center">
+            <p className="text-sm text-stone-500">Loading outfits…</p>
+          </div>
+        ) : productsList.length === 0 ? (
           <div className="text-center py-24 bg-cream/40 border border-border p-8 space-y-4">
             <div className="text-4xl">🔍</div>
             <h3 className="font-display text-xl font-bold text-charcoal">No outfits found</h3>
@@ -217,46 +265,71 @@ export function AllProductsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-8 lg:gap-10">
-            {paginatedProducts.map(product => (
+            {productsList.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
 
-        {/* Pagination (1 2 3 Next →) */}
-        {totalPages > 1 && (
-          <div className="mt-14 pt-8 border-t border-gray-100 flex items-center justify-center gap-2">
+        {/* Pagination Bar (Matching user screenshot: ← Prev | 1 | 2 | 3 ... | Next →) */}
+        {totalPagesCount > 1 && (
+          <nav
+            role="navigation"
+            aria-label="Pagination"
+            className="mt-14 pt-8 border-t border-gray-100 flex items-center justify-center gap-2 sm:gap-3"
+          >
             <button
               onClick={() => handlePageChange(currentPageNum - 1)}
               disabled={currentPageNum === 1}
-              className="px-3 py-1.5 text-xs font-semibold text-charcoal disabled:opacity-30 hover:text-olive transition-colors cursor-pointer"
+              className="px-3 py-1.5 text-xs sm:text-sm font-semibold text-charcoal disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
               aria-label="Previous page"
             >
               ← Prev
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-              <button
-                key={num}
-                onClick={() => handlePageChange(num)}
-                className={`w-8 h-8 flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${currentPageNum === num
-                    ? 'bg-black text-white shadow-xs'
-                    : 'text-charcoal hover:bg-cream'
-                  }`}
-              >
-                {num}
-              </button>
-            ))}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {paginationPages.map((item, idx) => {
+                if (item === '...') {
+                  return (
+                    <span
+                      key={`dots-${idx}`}
+                      className="w-8 h-8 flex items-center justify-center text-xs font-medium text-stone-400 select-none"
+                    >
+                      ...
+                    </span>
+                  )
+                }
+
+                const pageNum = item as number
+                const isActive = currentPageNum === pageNum
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={`Page ${pageNum}`}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-charcoal hover:bg-stone-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
 
             <button
               onClick={() => handlePageChange(currentPageNum + 1)}
-              disabled={currentPageNum === totalPages}
-              className="px-3 py-1.5 text-xs font-semibold text-charcoal disabled:opacity-30 hover:text-olive transition-colors cursor-pointer"
+              disabled={currentPageNum === totalPagesCount}
+              className="px-3 py-1.5 text-xs sm:text-sm font-semibold text-charcoal disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
               aria-label="Next page"
             >
               Next →
             </button>
-          </div>
+          </nav>
         )}
       </div>
 
@@ -267,7 +340,7 @@ export function AllProductsPage() {
         filters={filters}
         onChange={setFilters}
         facets={facets}
-        resultCount={filteredProducts.length}
+        resultCount={totalCount}
       />
     </div>
   )

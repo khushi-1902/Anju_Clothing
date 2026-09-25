@@ -1,4 +1,49 @@
-model Test {
-  id   Int    @id @default(autoincrement())
-  name String
+model Product {
+  id              Int              @id @default(autoincrement())
+  handle          String           @unique
+  name            String
+  descriptionHtml String?
+  fabric          String?
+  work            String?
+  category        String?
+  price           Int
+  comparePrice    Int?
+  isNewArrival    Boolean          @default(false)
+  isBestseller    Boolean          @default(false)
+  isSale          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  variants        ProductVariant[]
+  images          ProductImage[]
+
+  @@index([isBestseller, createdAt])
+  @@index([isSale, createdAt])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             Int     @id @default(autoincrement())
+  sku            String?
+  size           String?
+  color          String?
+  price          Int
+  compareAtPrice Int?
+  stock          Int     @default(0)
+  imageUrl       String?
+  productId      Int
+  product        Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  url       String
+  position  Int     @default(1)
+  alt       String?
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("product_images")
 }

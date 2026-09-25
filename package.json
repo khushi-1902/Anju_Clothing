@@ -9,6 +9,10 @@
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",
+    "cors": "^2.8.6",
     "prisma": "^8.0.0-rc.15"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
   }
 }

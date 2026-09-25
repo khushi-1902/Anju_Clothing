@@ -34,6 +34,8 @@ export interface Product {
   work?: string
   sizes?: string[]
   colors?: string[]
+  variants?: { id?: number; size?: string | null; color?: string | null; price?: number; imageUrl?: string | null }[]
+  colorImageMap?: Record<string, string>
   inStock?: boolean
   isNewArrival?: boolean
   isBestseller?: boolean

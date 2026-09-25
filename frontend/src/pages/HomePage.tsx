@@ -8,7 +8,7 @@ import { ProductScroller } from '../components/ProductScroller'
 import { ImagePlaceholder } from '../components/ImagePlaceholder'
 import { CATEGORIES, PRODUCTS } from '../data/products'
 import { useShop } from '../context/ShopContext'
-
+import { useNewArrivals, useBestsellers, useSaleProducts } from '../lib/api'
 /** Same button under every product section: "View More" on mobile, the full label from tablet up */
 function ViewMoreButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
@@ -29,9 +29,9 @@ function ViewMoreButton({ label, onClick }: { label: string; onClick: () => void
 export function HomePage() {
   const { navigateTo } = useShop()
 
-  const newArrivals = PRODUCTS.filter(p => p.isNewArrival)
-  const bestsellers = PRODUCTS.filter(p => p.isBestseller)
-  const saleItems = PRODUCTS.filter(p => p.isSale)
+  const { products: newArrivals, loading: newArrivalsLoading } = useNewArrivals(8)
+  const { products: bestsellers, loading: bestsellersLoading } = useBestsellers(8)
+  const { products: saleItems, loading: saleLoading } = useSaleProducts(8)
 
   const handleCategoryClick = (slug: string) => {
     navigateTo('all-products', undefined, slug)
@@ -44,60 +44,6 @@ export function HomePage() {
 
       {/* 2. Trust Assurances Bar */}
       <TrustBar />
-
-      {/* 3. Shop Categories Section (Centered Heading) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16" aria-labelledby="categories-heading">
-        <div className="text-center mb-8 sm:mb-12">
-          <p className="text-[#c9973a] text-xs uppercase tracking-[0.3em] font-semibold mb-2">
-            Curated Styles
-          </p>
-          <h2 id="categories-heading" className="font-display text-3xl sm:text-4xl font-bold text-charcoal">
-            Shop By Category
-          </h2>
-          <p className="text-muted text-xs sm:text-sm mt-2 max-w-md mx-auto">
-            Explore authentic handpicked Indian ensembles designed for every celebration
-          </p>
-        </div>
-
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 sm:gap-6 -mx-4 px-4 pb-2 scroll-px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:mx-0 sm:px-0 sm:overflow-visible sm:snap-none">
-          {CATEGORIES.slice(0, 4).map(cat => (
-            <div
-              key={cat.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleCategoryClick(cat.slug)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleCategoryClick(cat.slug)
-                }
-              }}
-              className="group flex-none w-[44vw] min-w-[150px] max-w-[210px] snap-start sm:w-auto sm:min-w-0 sm:max-w-none flex flex-col cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-            >
-              {/* Category Dress Image with Rounded Corners & Extra Height (aspect 2:3) */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[2/3] w-full bg-[#FAF7F2] border border-stone-200/60 shadow-xs group-hover:shadow-md transition-all">
-                <ImagePlaceholder
-                  src={cat.img}
-                  alt={cat.name}
-                  aspectRatio="2/3"
-                  label={cat.name}
-                />
-              </div>
-
-              {/* Category Details BELOW the Card */}
-              <div className="pt-2.5 px-1 text-center">
-                <span className="font-semibold text-xs sm:text-sm text-charcoal group-hover:text-[#769055] transition-colors block">
-                  {cat.name}
-                </span>
-                <span className="text-[11px] text-[#769055] font-medium mt-0.5 inline-block group-hover:underline">
-                  View Collection →
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* 4. New Arrivals Section (Centered Heading - 4 Cards Per Row) */}
       <section id="new-arrivals" className="py-12 sm:py-16 bg-ivory border-t border-border/40" aria-labelledby="new-arrivals-heading">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -113,12 +59,15 @@ export function HomePage() {
             </p>
           </div>
 
-          <ProductScroller
-            products={newArrivals}
-            desktopLimit={4}
-            desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
-          />
-
+          {newArrivalsLoading ? (
+            <p className="text-sm text-stone-500">Loading…</p>
+          ) : (
+            <ProductScroller
+              products={newArrivals}
+              desktopLimit={4}
+              desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
+            />
+          )}
           <ViewMoreButton
             label="Explore All New Arrivals"
             onClick={() => navigateTo('all-products')}
@@ -144,11 +93,15 @@ export function HomePage() {
             </p>
           </div>
 
-          <ProductScroller
-            products={bestsellers}
-            desktopLimit={4}
-            desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
-          />
+          {bestsellersLoading ? (
+            <p className="text-sm text-stone-500">Loading…</p>
+          ) : (
+            <ProductScroller
+              products={bestsellers}
+              desktopLimit={4}
+              desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
+            />
+          )}
 
           <ViewMoreButton
             label="View All Bestsellers"
@@ -172,11 +125,15 @@ export function HomePage() {
             </p>
           </div>
 
-          <ProductScroller
-            products={saleItems}
-            desktopLimit={4}
-            desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
-          />
+          {saleLoading ? (
+            <p className="text-sm text-stone-500">Loading…</p>
+          ) : (
+            <ProductScroller
+              products={saleItems}
+              desktopLimit={4}
+              desktopGridClassName="sm:grid-cols-2 lg:grid-cols-4"
+            />
+          )}
 
           <ViewMoreButton
             label="View All Sale Items"

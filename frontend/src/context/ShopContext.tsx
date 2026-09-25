@@ -50,7 +50,7 @@ interface ShopContextType {
   
   // Cart
   cart: CartItem[]
-  addToCart: (product: Product, selectedSize?: string, quantity?: number) => void
+  addToCart: (product: Product, selectedSize?: string, quantity?: number, selectedColor?: string) => void
   removeFromCart: (productId: string, selectedSize: string) => void
   updateQuantity: (productId: string, selectedSize: string, delta: number) => void
   clearCart: () => void
@@ -202,11 +202,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const addToCart = (product: Product, selectedSize?: string, quantity: number = 1) => {
+  const addToCart = (product: Product, selectedSize?: string, quantity: number = 1, selectedColor?: string) => {
     const size = selectedSize || product.sizes?.[0] || 'Standard'
+    const color = selectedColor || product.colors?.[0]
     setCart(prev => {
       const existingIndex = prev.findIndex(
-        item => item.product.id === product.id && item.selectedSize === size
+        item => item.product.id === product.id && item.selectedSize === size && item.selectedColor === color
       )
       if (existingIndex > -1) {
         const next = [...prev]
@@ -216,7 +217,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
         return next
       }
-      return [...prev, { product, quantity, selectedSize: size }]
+      return [...prev, { product, quantity, selectedSize: size, selectedColor: color }]
     })
     setIsCartOpen(true)
   }

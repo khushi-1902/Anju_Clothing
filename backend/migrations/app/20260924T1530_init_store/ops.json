@@ -1,0 +1,340 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.product_images",
+    "label": "Create table \"product_images\"",
+    "summary": "Creates table \"product_images\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "product_images"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"product_images\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_images\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"product_images\"",
+        "sql": "CREATE TABLE \"public\".\"product_images\" (\n  \"alt\" text,\n  \"id\" SERIAL NOT NULL,\n  \"position\" int4 DEFAULT 1 NOT NULL,\n  \"productId\" int4 NOT NULL,\n  \"url\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"product_images\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_images\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.product_variants",
+    "label": "Create table \"product_variants\"",
+    "summary": "Creates table \"product_variants\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "product_variants"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"product_variants\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_variants\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"product_variants\"",
+        "sql": "CREATE TABLE \"public\".\"product_variants\" (\n  \"color\" text,\n  \"compareAtPrice\" int4,\n  \"id\" SERIAL NOT NULL,\n  \"imageUrl\" text,\n  \"price\" int4 NOT NULL,\n  \"productId\" int4 NOT NULL,\n  \"size\" text,\n  \"sku\" text,\n  \"stock\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"product_variants\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_variants\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.products",
+    "label": "Create table \"products\"",
+    "summary": "Creates table \"products\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "products"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"products\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"products\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"products\"",
+        "sql": "CREATE TABLE \"public\".\"products\" (\n  \"category\" text,\n  \"comparePrice\" int4,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"descriptionHtml\" text,\n  \"fabric\" text,\n  \"handle\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"isBestseller\" bool DEFAULT false NOT NULL,\n  \"isNewArrival\" bool DEFAULT false NOT NULL,\n  \"isSale\" bool DEFAULT false NOT NULL,\n  \"name\" text NOT NULL,\n  \"price\" int4 NOT NULL,\n  \"work\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"products\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"products\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.products.products_handle_key",
+    "label": "Add unique constraint on \"products\" (handle)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "products_handle_key",
+        "table": "products"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"products_handle_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "products_handle_key",
+          "public",
+          "\"public\".\"products\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"products_handle_key\"",
+        "sql": "ALTER TABLE \"public\".\"products\" ADD CONSTRAINT \"products_handle_key\" UNIQUE (\"handle\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"products_handle_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "products_handle_key",
+          "public",
+          "\"public\".\"products\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.product_images.product_images_productId_idx_5858600a",
+    "label": "Create index \"product_images_productId_idx_5858600a\" on \"product_images\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "product_images_productId_idx_5858600a",
+        "table": "product_images"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"product_images_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_images_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"product_images_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"product_images_productId_idx_5858600a\" ON \"public\".\"product_images\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"product_images_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_images_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.product_variants.product_variants_productId_idx_5858600a",
+    "label": "Create index \"product_variants_productId_idx_5858600a\" on \"product_variants\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "product_variants_productId_idx_5858600a",
+        "table": "product_variants"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"product_variants_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_variants_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"product_variants_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"product_variants_productId_idx_5858600a\" ON \"public\".\"product_variants\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"product_variants_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_variants_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.product_images.product_images_productId_fkey",
+    "label": "Add foreign key \"product_images_productId_fkey\" on \"product_images\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "product_images_productId_fkey",
+        "table": "product_images"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"product_images_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_images_productId_fkey",
+          "public",
+          "\"public\".\"product_images\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"product_images_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"product_images\"\nADD CONSTRAINT \"product_images_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"products\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"product_images_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_images_productId_fkey",
+          "public",
+          "\"public\".\"product_images\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.product_variants.product_variants_productId_fkey",
+    "label": "Add foreign key \"product_variants_productId_fkey\" on \"product_variants\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "product_variants_productId_fkey",
+        "table": "product_variants"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"product_variants_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_variants_productId_fkey",
+          "public",
+          "\"public\".\"product_variants\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"product_variants_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"product_variants\"\nADD CONSTRAINT \"product_variants_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"products\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"product_variants_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_variants_productId_fkey",
+          "public",
+          "\"public\".\"product_variants\""
+        ]
+      }
+    ]
+  }
+]
