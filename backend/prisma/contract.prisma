@@ -47,3 +47,22 @@ model ProductImage {
   @@index([productId])
   @@map("product_images")
 }
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  clerkUserId String   @unique @map("clerk_user_id")
+  email       String   @unique
+  name        String?
+  role        Role     @default(CUSTOMER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([clerkUserId])
+  @@index([email])
+  @@map("users")
+}

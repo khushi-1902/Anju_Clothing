@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useShop } from '../context/ShopContext'
 import { STORE_INFO } from '../data/products'
 import { ImagePlaceholder } from './ImagePlaceholder'
+import { CheckoutModal } from './CheckoutModal'
 import {
   SignedIn,
   SignedOut,
@@ -21,8 +23,10 @@ export function CartDrawer() {
   } = useShop()
 
   const { user } = useUser()
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
 
-  if (!isCartOpen) return null
+  if (!isCartOpen && !isCheckoutOpen) return null
+
 
   const freeShippingThreshold = 1499
   const amountToFreeShipping = Math.max(0, freeShippingThreshold - cartSubtotal)
@@ -276,33 +280,25 @@ export function CartDrawer() {
                 </SignedOut>
 
                 {/* Regular Checkout */}
-                <SignedIn>
-                  <button
-                    type="button"
-                    disabled
-                    title="Checkout flow is not yet available — please use Order via WhatsApp"
-                    className="w-full py-3 bg-[#769055]/60 text-white/90 text-xs font-bold uppercase tracking-wider shadow-sm cursor-not-allowed"
-                  >
-                    Checkout Coming Soon — Use WhatsApp (Rs. {cartSubtotal.toLocaleString('en-IN')}.00)
-                  </button>
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton mode="modal" fallbackRedirectUrl="/">
-                    <button
-                      type="button"
-                      disabled
-                      title="Checkout flow is not yet available — please use Order via WhatsApp"
-                      className="w-full py-3 bg-[#769055]/60 text-white/90 text-xs font-bold uppercase tracking-wider shadow-sm cursor-not-allowed"
-                    >
-                      Checkout Coming Soon — Use WhatsApp (Rs. {cartSubtotal.toLocaleString('en-IN')}.00)
-                    </button>
-                  </SignInButton>
-                </SignedOut>
+                <button
+                  type="button"
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="w-full py-3 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>🛍️</span> Proceed to Checkout (Rs. {cartSubtotal.toLocaleString('en-IN')}.00)
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+      />
     </div>
   )
 }
+

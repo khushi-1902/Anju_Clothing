@@ -1,13 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
-import {
-  SignIn,
-  SignUp,
-  UserProfile,
-  SignedIn,
-  SignedOut,
-  RedirectToSignIn,
-} from '@clerk/clerk-react'
 import { ShopProvider } from './context/ShopContext'
 import { AnnouncementBar } from './components/AnnouncementBar'
 import { Header } from './components/Header'
@@ -21,6 +13,9 @@ import { AllProductsPage } from './pages/AllProductsPage'
 import { BestsellersPage } from './pages/BestsellersPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ContactUsPage } from './pages/ContactUsPage'
+import { AuthPage } from './pages/AuthPage'
+import { TrackOrderPage } from './pages/TrackOrderPage'
+import { OrdersPage } from './pages/OrdersPage'
 
 function SeoHandler() {
   const location = useLocation()
@@ -35,89 +30,18 @@ function SeoHandler() {
       document.title = 'Best Sellers - Most Loved Outfits | Anju Clothing'
     } else if (path.startsWith('/contact')) {
       document.title = 'Contact Us & International Orders | Anju Clothing'
-    } else if (path.startsWith('/sign-in')) {
-      document.title = 'Log In | Anju Clothing'
-    } else if (path.startsWith('/sign-up')) {
-      document.title = 'Create Account | Anju Clothing'
-    } else if (path.startsWith('/account')) {
-      document.title = 'My Account & Orders | Anju Clothing'
+    } else if (path.startsWith('/sign-in') || path.startsWith('/login')) {
+      document.title = 'Log In | Anju Clothing Luxury Club'
+    } else if (path.startsWith('/sign-up') || path.startsWith('/signup')) {
+      document.title = 'Create Account | Anju Clothing Luxury Club'
+    } else if (path.startsWith('/track')) {
+      document.title = 'Live Courier & Order Tracking | Anju Clothing'
+    } else if (path.startsWith('/orders') || path.startsWith('/account')) {
+      document.title = 'My Orders & Account | Anju Clothing'
     }
   }, [location.pathname])
 
   return null
-}
-
-function ClerkSignInPage() {
-  return (
-    <div className="min-h-[calc(100vh-180px)] py-14 sm:py-20 bg-ivory flex items-start justify-center px-4">
-      <div className="w-full max-w-md">
-        <SignIn
-          path="/sign-in"
-          signUpUrl="/sign-up"
-          afterSignInUrl="/"
-          afterSignUpUrl="/"
-          appearance={{
-            layout: {
-              socialButtonsVariant: 'blockButton',
-            },
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ClerkSignUpPage() {
-  return (
-    <div className="min-h-[calc(100vh-180px)] py-14 sm:py-20 bg-ivory flex items-start justify-center px-4">
-      <div className="w-full max-w-md">
-        <SignUp
-          path="/sign-up"
-          signInUrl="/sign-in"
-          afterSignInUrl="/"
-          afterSignUpUrl="/"
-          appearance={{
-            layout: {
-              socialButtonsVariant: 'blockButton',
-            },
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ClerkAccountPage() {
-  return (
-    <div className="min-h-[calc(100vh-180px)] py-10 sm:py-14 bg-ivory px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-charcoal mb-1">
-            My Account
-          </h1>
-          <p className="text-xs sm:text-sm text-muted">
-            Manage your profile, security settings, and sign-in sessions.
-          </p>
-        </div>
-        <div className="bg-white border border-border/60 shadow-sm">
-          <UserProfile path="/account" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ProtectedAccount() {
-  return (
-    <>
-      <SignedIn>
-        <ClerkAccountPage />
-      </SignedIn>
-      <SignedOut>
-        <RedirectToSignIn redirectUrl="/account" />
-      </SignedOut>
-    </>
-  )
 }
 
 function MainContent() {
@@ -131,24 +55,26 @@ function MainContent() {
         <Route path="/product/:productId" element={<ProductDetailPage />} />
         <Route path="/contact" element={<ContactUsPage />} />
 
-        {/* Clerk-hosted sign-in & sign-up pages. */}
-        <Route path="/sign-in" element={<ClerkSignInPage />} />
-        <Route path="/sign-up" element={<ClerkSignUpPage />} />
-        <Route path="/sign-in/*" element={<ClerkSignInPage />} />
-        <Route path="/sign-up/*" element={<ClerkSignUpPage />} />
+        {/* E-Commerce Auth (Clerk Integrated) */}
+        <Route path="/sign-in" element={<AuthPage initialMode="sign-in" />} />
+        <Route path="/sign-up" element={<AuthPage initialMode="sign-up" />} />
+        <Route path="/sign-in/*" element={<AuthPage initialMode="sign-in" />} />
+        <Route path="/sign-up/*" element={<AuthPage initialMode="sign-up" />} />
+        <Route path="/login" element={<AuthPage initialMode="sign-in" />} />
+        <Route path="/signup" element={<AuthPage initialMode="sign-up" />} />
 
-        {/* Old URL paths: /login /signup /account → redirect to Clerk equivalents.
-            Kept so existing bookmards still work and any lingering navigateTo('login') /
-            navigateTo('signup') / navigateTo('account') calls go to the right place. */}
-        <Route path="/login" element={<ClerkSignInPage />} />
-        <Route path="/signup" element={<ClerkSignUpPage />} />
-        <Route path="/account" element={<ProtectedAccount />} />
+        {/* Live Order Tracking & Management */}
+        <Route path="/track-order" element={<TrackOrderPage />} />
+        <Route path="/track/:orderNumber" element={<TrackOrderPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/account" element={<OrdersPage />} />
 
         <Route path="*" element={<HomePage />} />
       </Routes>
     </main>
   )
 }
+
 
 export default function App() {
   return (

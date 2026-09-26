@@ -306,13 +306,130 @@ export function useProduct(handle: string | undefined) {
     setLoading(true)
     setNotFound(false)
     fetchProduct(handle)
-      .then((p) => !cancelled && setProduct(p))
-      .catch(() => !cancelled && setNotFound(true))
-      .finally(() => !cancelled && setLoading(false))
+      .then((p) => {
+        if (!cancelled) setProduct(p)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          const fallback = PRODUCTS.find(
+            (p) => p.id === handle || p.id.toLowerCase() === handle.toLowerCase()
+          )
+          if (fallback) {
+            setProduct(fallback)
+          } else {
+            setNotFound(true)
+          }
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
-      cancelled = true // avoids showing a stale product if the user clicks another card quickly
+      cancelled = true
     }
   }, [handle])
 
   return { product, loading, notFound }
 }
+
+
+export interface OrderTimelineEvent {
+  status: string
+  time: string
+  completed: boolean
+  description?: string
+}
+
+export interface OrderItem {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  selectedSize?: string
+  selectedColor?: string
+  img?: string
+}
+
+export interface ShippingAddress {
+  street: string
+  city: string
+  state: string
+  pincode: string
+  country?: string
+}
+
+export interface Order {
+  id?: number
+  orderNumber: string
+  clerkUserId?: string | null
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  shippingAddress: ShippingAddress
+  items: OrderItem[]
+  subtotal: number
+  shippingFee: number
+  discountAmount: number
+  totalAmount: number
+  paymentMethod: string
+  paymentStatus: string
+  orderStatus: string
+  courierName?: string
+  trackingNumber?: string
+  estimatedDelivery?: string
+  timeline: OrderTimelineEvent[]
+  createdAt: string
+  updatedAt?: string
+}
+
+export async function createOrder(payload: Omit<Order, 'orderNumber' | 'createdAt' | 'timeline'>): Promise<Order> {
+  const res = await fetch(`${API_URL}/api/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Failed to place order')
+  }
+  const data: { order: Order } = await res.json()
+  return data.order
+}
+
+export async function fetchUserOrders(userIdOrEmail: string): Promise<Order[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/orders/user/${encodeURIComponent(userIdOrEmail)}`)
+    if (!res.ok) return []
+    const data: { orders: Order[] } = await res.json()
+    return data.orders || []
+  } catch {
+    return []
+  }
+}
+
+export async function trackOrder(orderNumber: string, verify?: string): Promise<Order> {
+  const url = `${API_URL}/api/orders/track/${encodeURIComponent(orderNumber)}${
+    verify ? `?verify=${encodeURIComponent(verify)}` : ''
+  }`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Order not found')
+  }
+  const data: { order: Order } = await res.json()
+  return data.order
+}
+
+export async function cancelOrder(orderNumber: string, reason?: string): Promise<Order> {
+  const res = await fetch(`${API_URL}/api/orders/${encodeURIComponent(orderNumber)}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Could not cancel order')
+  }
+  const data: { order: Order } = await res.json()
+  return data.order
+}

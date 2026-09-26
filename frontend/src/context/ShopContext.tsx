@@ -91,6 +91,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (path.startsWith('/bestsellers')) return 'bestsellers'
     if (path.startsWith('/product')) return 'product-detail'
     if (path.startsWith('/contact')) return 'contact'
+    if (path.startsWith('/track')) return 'track-order'
+    if (path.startsWith('/orders')) return 'orders'
     if (path.startsWith('/sign-in') || path.startsWith('/login')) return 'login'
     if (path.startsWith('/sign-up') || path.startsWith('/signup')) return 'signup'
     if (path.startsWith('/account')) return 'account'
@@ -194,12 +196,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       case 'signup':
         navigate('/sign-up')
         break
+      case 'orders':
+        navigate('/orders')
+        break
+      case 'track-order':
+        navigate('/track-order')
+        break
       case 'account':
         navigate('/account')
         break
       default:
         navigate('/')
     }
+
   }
 
   const addToCart = (product: Product, selectedSize?: string, quantity: number = 1, selectedColor?: string) => {

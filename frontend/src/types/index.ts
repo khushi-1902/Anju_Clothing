@@ -1,4 +1,4 @@
-export type PageType = 'home' | 'all-products' | 'bestsellers' | 'contact' | 'product-detail' | 'login' | 'signup' | 'account'
+export type PageType = 'home' | 'all-products' | 'bestsellers' | 'contact' | 'product-detail' | 'login' | 'signup' | 'account' | 'orders' | 'track-order'
 
 export interface ShopUser {
   firstName: string

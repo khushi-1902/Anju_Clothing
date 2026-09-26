@@ -99,7 +99,7 @@ export function Header() {
         </nav>
 
         {/* Right Action Icons (Search, User, Wishlist, Cart with Price) */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2.5">
 
           {/* Search Toggle */}
           <button
@@ -112,30 +112,23 @@ export function Header() {
             </svg>
           </button>
 
-          {/* User / Account Icon + Clerk Controls */}
+          {/* User / Account Icon (Sign In / Register / Profile) */}
           <div className="flex items-center">
             <SignedOut>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <SignInButton mode="modal" fallbackRedirectUrl="/">
-                  <button
-                    className="p-1.5 transition-colors cursor-pointer relative text-charcoal hover:text-[#769055]"
-                    aria-label="Log in"
-                    title="Log In"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                    </svg>
-                  </button>
-                </SignInButton>
-                <SignUpButton mode="modal" fallbackRedirectUrl="/">
-                  <span className="hidden sm:inline-block px-3 py-1.5 bg-[#769055] text-white text-[10px] font-bold uppercase tracking-wider hover:bg-[#5e7343] transition-colors cursor-pointer rounded-sm">
-                    Sign up
-                  </span>
-                </SignUpButton>
-              </div>
+              <SignInButton mode="modal" fallbackRedirectUrl="/">
+                <button
+                  className="p-1.5 transition-colors cursor-pointer relative text-charcoal hover:text-[#769055]"
+                  aria-label="Sign In / Register"
+                  title="Sign In / Register"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </button>
+              </SignInButton>
             </SignedOut>
             <SignedIn>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <button
                   onClick={handleAccountClickSignedIn}
                   className="p-1.5 text-charcoal hover:text-[#769055] transition-colors cursor-pointer relative"
@@ -149,7 +142,7 @@ export function Header() {
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#769055] ring-2 ring-white" />
                   </div>
                   {firstName && (
-                    <span className="hidden xl:inline text-xs font-semibold text-charcoal">
+                    <span className="hidden xl:inline text-xs font-semibold text-charcoal ml-1">
                       Hi, {firstName}
                     </span>
                   )}
@@ -157,7 +150,7 @@ export function Header() {
                 <UserButton
                   appearance={{
                     elements: {
-                      avatarBox: 'w-8 h-8',
+                      avatarBox: 'w-7 h-7 sm:w-8 sm:h-8',
                       userButtonBox: 'justify-center',
                     },
                   }}
@@ -187,7 +180,7 @@ export function Header() {
           {/* Cart with Price badge */}
           <button
             onClick={openCart}
-            className="flex items-center gap-1.5 p-1.5 text-charcoal hover:text-[#769055] transition-colors cursor-pointer"
+            className="flex items-center gap-1 sm:gap-1.5 p-1.5 text-charcoal hover:text-[#769055] transition-colors cursor-pointer"
             aria-label={`Shopping cart (${cartCount} items, Rs. ${cartSubtotal})`}
           >
             <div className="relative">
@@ -246,7 +239,7 @@ export function Header() {
 
       {/* Mobile Menu Dropdown */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white py-4 px-6 flex flex-col gap-2 shadow-lg">
+        <div className="md:hidden border-t border-gray-100 bg-white py-4 px-5 sm:px-6 flex flex-col gap-1 shadow-lg max-h-[calc(100vh-80px)] overflow-y-auto">
           {NAV_ITEMS.map(({ name, page }) => {
             const isActive = currentPage === page
             return (
@@ -265,15 +258,35 @@ export function Header() {
             )
           })}
 
+          {/* Quick links to Track Order and Orders */}
+          <button
+            onClick={() => {
+              navigateTo('track-order')
+              setMenuOpen(false)
+            }}
+            className="text-left text-xs uppercase font-bold tracking-wider py-2.5 border-b border-gray-50 text-[#769055] flex items-center gap-2"
+          >
+            <span>📦</span> Track Your Order
+          </button>
+          <button
+            onClick={() => {
+              navigateTo('orders')
+              setMenuOpen(false)
+            }}
+            className="text-left text-xs uppercase font-bold tracking-wider py-2.5 border-b border-gray-50 text-charcoal flex items-center gap-2"
+          >
+            <span>🛍️</span> My Orders & History
+          </button>
+
           {/* Account item in mobile drawer — Clerk powered */}
-          <div className="pt-2 border-t border-gray-100 mt-2">
+          <div className="pt-3 border-t border-gray-100 mt-2">
             <SignedIn>
               <div className="flex items-center justify-between py-2">
-                <div>
-                  <p className="text-xs font-bold text-charcoal">Hi, {firstName ?? 'there'}</p>
-                  {primaryEmail && <p className="text-[11px] text-muted">{primaryEmail}</p>}
+                <div className="min-w-0 pr-2">
+                  <p className="text-xs font-bold text-charcoal truncate">Hi, {firstName ?? 'there'}</p>
+                  {primaryEmail && <p className="text-[11px] text-muted truncate">{primaryEmail}</p>}
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center shrink-0">
                   <button
                     onClick={() => {
                       navigateTo('account')
@@ -303,11 +316,11 @@ export function Header() {
               </div>
             </SignedIn>
             <SignedOut>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <SignInButton mode="modal" fallbackRedirectUrl="/">
                   <button
                     onClick={() => setMenuOpen(false)}
-                    className="flex-1 text-center py-2.5 bg-white border border-[#769055] text-[#769055] text-xs font-bold uppercase tracking-wider"
+                    className="flex-1 text-center py-2.5 bg-white border border-[#769055] text-[#769055] text-xs font-bold uppercase tracking-wider cursor-pointer"
                   >
                     Log In
                   </button>
@@ -315,7 +328,7 @@ export function Header() {
                 <SignUpButton mode="modal" fallbackRedirectUrl="/">
                   <button
                     onClick={() => setMenuOpen(false)}
-                    className="flex-1 text-center py-2.5 bg-[#769055] text-white text-xs font-bold uppercase tracking-wider"
+                    className="flex-1 text-center py-2.5 bg-[#769055] text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
                   >
                     Create Account
                   </button>
