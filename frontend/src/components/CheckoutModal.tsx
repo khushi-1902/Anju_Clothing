@@ -10,7 +10,7 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
-  const { cart, cartSubtotal, clearCart, closeCart } = useShop()
+  const { cart, cartSubtotal, clearCart, closeCart, shippingSettings } = useShop()
   const { user } = useUser()
   const navigate = useNavigate()
 
@@ -48,8 +48,11 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
   if (!isOpen) return null
 
-  const shippingFee = cartSubtotal >= 1499 ? 0 : 99
+  const freeShippingThreshold = shippingSettings.freeThreshold || 1999
+  const flatShippingFee = shippingSettings.flatFee ?? 99
+  const shippingFee = cartSubtotal >= freeShippingThreshold ? 0 : flatShippingFee
   const totalAmount = cartSubtotal + shippingFee
+  const codExtraFee = shippingSettings.codAdvanceAmount ?? 200
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,6 +81,13 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }))
 
     try {
+      const isCod = paymentMethod === 'COD'
+      const paymentStatus = isCod ? `COD Confirmed (₹${codExtraFee} Fee Paid)` : 'Paid'
+      const formattedPaymentMethod = isCod ? `COD (+₹${codExtraFee} Online Fee)` : 'Online UPI / Card'
+      const notes = isCod
+        ? `COD Order: Extra ₹${codExtraFee} booking fee paid online. Full actual dress price ₹${totalAmount} to be collected on delivery.`
+        : 'Full online payment confirmed.'
+
       const newOrder = await createOrder({
         clerkUserId: user?.id || null,
         customerName: name.trim(),
@@ -95,9 +105,12 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         shippingFee,
         discountAmount: 0,
         totalAmount,
-        paymentMethod,
-        paymentStatus: paymentMethod === 'Online UPI / Card' ? 'Paid' : 'Pending',
+        paymentMethod: formattedPaymentMethod,
+        paymentStatus,
         orderStatus: 'Confirmed',
+        courierName: shippingSettings.defaultCourier || 'Blue Dart Express',
+        estimatedDelivery: shippingSettings.estimatedDelivery || '3–5 Business Days',
+        notes,
       })
 
       // Clean up and direct user to order tracking
@@ -282,14 +295,15 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
             {/* Payment Options */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal mb-3 border-b border-gray-100 pb-1.5">
-                3. Choose Payment Method
+              <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal mb-3 border-b border-gray-100 pb-1.5 flex items-center justify-between">
+                <span>3. Choose Payment Method</span>
+                <span className="text-[11px] font-normal text-muted">100% Encrypted & Secure</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label
                   className={`p-3.5 border flex items-start gap-3 cursor-pointer transition-colors ${
                     paymentMethod === 'Online UPI / Card'
-                      ? 'border-[#769055] bg-emerald-50/40'
+                      ? 'border-[#769055] bg-emerald-50/40 shadow-xs'
                       : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
@@ -301,15 +315,15 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     className="mt-0.5 text-[#769055] focus:ring-[#769055]"
                   />
                   <div>
-                    <strong className="block text-xs text-charcoal">Online UPI / Debit & Credit Card</strong>
-                    <span className="text-[11px] text-muted">Instant confirmation & priority express dispatch.</span>
+                    <strong className="block text-xs text-charcoal">Full Online Payment (UPI / Card / NetBanking)</strong>
+                    <span className="text-[11px] text-muted">Pay full Rs. {totalAmount.toLocaleString('en-IN')}.00 online. Instant priority dispatch.</span>
                   </div>
                 </label>
 
                 <label
                   className={`p-3.5 border flex items-start gap-3 cursor-pointer transition-colors ${
                     paymentMethod === 'COD'
-                      ? 'border-[#769055] bg-emerald-50/40'
+                      ? 'border-[#769055] bg-amber-50/40 shadow-xs'
                       : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
@@ -321,27 +335,52 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     className="mt-0.5 text-[#769055] focus:ring-[#769055]"
                   />
                   <div>
-                    <strong className="block text-xs text-charcoal">Cash on Delivery (COD)</strong>
-                    <span className="text-[11px] text-muted">Pay at doorstep upon delivery.</span>
+                    <div className="flex items-center gap-1.5">
+                      <strong className="block text-xs text-charcoal">Cash on Delivery (COD)</strong>
+                      <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                        +₹{codExtraFee} Online Fee
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-muted block mt-0.5">
+                      Pay <strong className="text-charcoal font-semibold">extra ₹{codExtraFee} online now</strong> for COD confirmation. Pay the <strong className="text-charcoal font-semibold">actual dress price (Rs. {totalAmount.toLocaleString('en-IN')}.00) during delivery</strong>.
+                    </span>
                   </div>
                 </label>
               </div>
             </div>
 
             {/* Order Price Summary */}
-            <div className="p-4 bg-[#FAF8F5] border border-border/80 text-xs space-y-1.5">
+            <div className="p-4 bg-[#FAF8F5] border border-border/80 text-xs space-y-2">
               <div className="flex justify-between text-muted">
                 <span>Items Subtotal ({cart.length} unique items)</span>
                 <span>Rs. {cartSubtotal.toLocaleString('en-IN')}.00</span>
               </div>
               <div className="flex justify-between text-muted">
-                <span>Shipping Fee</span>
+                <span>Shipping ({shippingSettings.defaultCourier || 'Express'} • {shippingSettings.estimatedDelivery || '3–5 Days'})</span>
                 <span>{shippingFee === 0 ? 'FREE' : `Rs. ${shippingFee}.00`}</span>
               </div>
               <div className="flex justify-between text-charcoal font-bold text-sm pt-2 border-t border-gray-200">
-                <span>Total Payable</span>
+                <span>Actual Dress / Order Amount</span>
                 <span className="text-[#769055]">Rs. {totalAmount.toLocaleString('en-IN')}.00</span>
               </div>
+
+              {/* COD Split Breakdown Highlight */}
+              {paymentMethod === 'COD' && (
+                <div className="mt-2 p-3 bg-amber-50/80 border border-amber-200 rounded-none space-y-1 text-[11px]">
+                  <div className="flex justify-between font-bold text-amber-950">
+                    <span className="flex items-center gap-1">
+                      <span>💳</span> Extra COD Booking Fee (Paid Online Now):
+                    </span>
+                    <span className="text-amber-900 font-bold">Rs. {codExtraFee}.00</span>
+                  </div>
+                  <div className="flex justify-between text-charcoal font-medium pt-1 border-t border-amber-200/60">
+                    <span className="flex items-center gap-1">
+                      <span>📦</span> Actual Dress Price to Pay on Delivery (Cash / UPI):
+                    </span>
+                    <span className="font-bold text-charcoal">Rs. {totalAmount.toLocaleString('en-IN')}.00</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Submit Action */}
@@ -358,7 +397,13 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                 disabled={isSubmitting}
                 className="w-full sm:w-auto px-8 py-3 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md disabled:opacity-50"
               >
-                {isSubmitting ? 'Placing Order...' : `Confirm & Place Order (Rs. ${totalAmount.toLocaleString('en-IN')}.00) →`}
+                {isSubmitting ? (
+                  'Placing Order...'
+                ) : paymentMethod === 'COD' ? (
+                  `Pay ₹${codExtraFee} Online & Confirm Order (Pay Rs. ${totalAmount.toLocaleString('en-IN')}.00 on Delivery) →`
+                ) : (
+                  `Confirm & Place Order (Rs. ${totalAmount.toLocaleString('en-IN')}.00) →`
+                )}
               </button>
             </div>
           </form>

@@ -6,6 +6,11 @@ import { pool } from './db'
 import { clerkAuth, requireLogin, requireAdmin } from './middleware/auth'
 import { clerkWebhookRouter } from './routes/webhooks/clerk'
 import { adminRouter } from './routes/admin'
+import { publicSettingsRouter } from './routes/settings'
+import { initSettingsTable } from './initSettingsTable'
+
+// Initialize settings table in PostgreSQL on boot
+initSettingsTable().catch((err) => console.error('Settings init error:', err))
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 4000)
@@ -20,8 +25,77 @@ app.use('/api/webhooks/clerk', clerkWebhookRouter)
 app.use(express.json())
 app.use(clerkAuth)
 
-// 3. Admin Protected Routes Group
+// 3. Public Store Settings (Shipping, Courier, Announcement)
+app.use('/api/settings', publicSettingsRouter)
+
+// 4. Admin Protected Routes Group
 app.use('/api/admin', requireLogin, requireAdmin, adminRouter)
+
+// 4. Authenticated User Profile & Role Check (for Frontend Route Guards)
+app.get('/api/auth/me', requireLogin, async (req, res) => {
+  try {
+    const clerkUserId = (req as any).auth?.userId
+    if (!clerkUserId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const adminEmails = (process.env.ADMIN_EMAILS || 'khushipatil9128@gmail.com,ajit14mahajan@gmail.com,khushipatil1914@gmail.com')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+
+    let { rows } = await pool.query(
+      `SELECT id, COALESCE("clerkUserId", clerk_user_id) AS "clerkUserId", email, name, role 
+       FROM users 
+       WHERE ("clerkUserId" = $1 OR clerk_user_id = $1) 
+       LIMIT 1`,
+      [clerkUserId]
+    )
+
+    let user = rows[0]
+
+    if (!user || user.role !== 'ADMIN' || !user.email) {
+      try {
+        const { createClerkClient } = await import('@clerk/express')
+        const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+        const cu = await clerkClient.users.getUser(clerkUserId)
+        const primaryEmailId = cu.primaryEmailAddressId
+        const emailObj = cu.emailAddresses?.find((e: any) => e.id === primaryEmailId)
+        const email = (emailObj?.emailAddress ?? cu.emailAddresses?.[0]?.emailAddress ?? '').toLowerCase().trim()
+        const name = `${cu.firstName || ''} ${cu.lastName || ''}`.trim() || null
+
+        const shouldBeAdmin = adminEmails.includes(email) || user?.role === 'ADMIN'
+        const role = shouldBeAdmin ? 'ADMIN' : (user?.role || 'CUSTOMER')
+
+        const upsertRes = await pool.query(
+          `INSERT INTO users ("clerkUserId", clerk_user_id, email, name, role, "updatedAt", updated_at)
+           VALUES ($1, $1, $2, $3, $4, NOW(), NOW())
+           ON CONFLICT ("clerkUserId") 
+           DO UPDATE SET 
+             email = EXCLUDED.email, 
+             name = COALESCE(EXCLUDED.name, users.name),
+             role = CASE WHEN users.role = 'ADMIN' OR $4 = 'ADMIN' THEN 'ADMIN' ELSE users.role END,
+             "updatedAt" = NOW()
+           RETURNING id, "clerkUserId", email, name, role`,
+          [clerkUserId, email || `user-${clerkUserId.slice(0, 8)}@store.local`, name, role]
+        )
+        user = upsertRes.rows[0]
+      } catch (clerkErr) {
+        console.warn('Could not query Clerk in /api/auth/me:', clerkErr)
+      }
+    }
+
+    const isAdmin = user?.role === 'ADMIN'
+
+    res.json({
+      user: user || { clerkUserId, role: 'CUSTOMER' },
+      isAdmin,
+    })
+  } catch (err) {
+    console.error('Error in /api/auth/me:', err)
+    res.status(500).json({ error: 'Failed to retrieve auth profile' })
+  }
+})
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
@@ -67,7 +141,7 @@ app.get('/api/products/new-arrivals', async (req, res) => {
           : 0,
     }))
 
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     res.json({ products })
   } catch (err) {
     console.error(err)
@@ -115,7 +189,7 @@ app.get('/api/products/bestsellers', async (req, res) => {
           : 0,
     }))
 
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     res.json({ products })
   } catch (err) {
     console.error(err)
@@ -163,7 +237,7 @@ const handleSaleProducts: express.RequestHandler = async (req, res) => {
           : 0,
     }))
 
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     res.json({ products })
   } catch (err) {
     console.error(err)
@@ -269,7 +343,7 @@ app.get('/api/products', async (req, res) => {
           : 0,
     }))
 
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     res.json({
       products,
       total,
@@ -319,7 +393,7 @@ app.get('/api/products/:handle', async (req, res) => {
     }
 
     const p = rows[0]
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     res.json({
       product: {
         ...p,
@@ -618,6 +692,10 @@ app.post('/api/orders', async (req, res) => {
     discountAmount = 0,
     totalAmount,
     paymentMethod = 'COD',
+    paymentStatus,
+    courierName,
+    estimatedDelivery,
+    notes,
   } = req.body
 
   if (!customerName || !customerEmail || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
@@ -639,19 +717,21 @@ app.post('/api/orders', async (req, res) => {
   const timeline = [
     { status: 'Order Placed', time: formattedDate, completed: true, description: 'Order received and confirmed by Anju Clothing boutique.' },
     { status: 'Quality Inspection & Packaging', time: 'In Progress', completed: false, description: 'Handcrafted inspection and luxury packaging.' },
-    { status: 'Dispatched / In Transit', time: 'Upcoming', completed: false, description: 'Express delivery handoff to BlueDart Courier.' },
+    { status: 'Dispatched / In Transit', time: 'Upcoming', completed: false, description: `Express delivery handoff to ${courierName || 'Blue Dart Express'}.` },
     { status: 'Out for Delivery', time: 'Upcoming', completed: false, description: 'Courier agent arrives at your doorstep.' },
     { status: 'Delivered', time: 'Upcoming', completed: false, description: 'Package safely delivered.' },
   ]
 
   try {
+    const finalPaymentStatus = paymentStatus || (paymentMethod === 'Online UPI / Card' ? 'Paid' : 'Pending')
+
     const { rows } = await pool.query(
       `INSERT INTO orders (
         "orderNumber", "clerkUserId", "customerName", "customerEmail", "customerPhone",
         "shippingAddress", items, subtotal, "shippingFee", "discountAmount", "totalAmount",
         "paymentMethod", "paymentStatus", "orderStatus", "courierName", "trackingNumber",
-        "estimatedDelivery", timeline
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        "estimatedDelivery", timeline, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
         orderNumber,
@@ -666,12 +746,13 @@ app.post('/api/orders', async (req, res) => {
         discountAmount || 0,
         totalAmount || subtotal || 0,
         paymentMethod,
-        paymentMethod === 'Online UPI / Card' ? 'Paid' : 'Pending',
+        finalPaymentStatus,
         'Confirmed',
-        'BlueDart Express',
+        courierName || 'Blue Dart Express',
         trackingNumber,
-        '3-5 Business Days',
+        estimatedDelivery || '3–5 Business Days',
         JSON.stringify(timeline),
+        notes || null,
       ]
     )
 

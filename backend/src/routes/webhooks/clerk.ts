@@ -34,17 +34,25 @@ clerkWebhookRouter.post(
     let evt: any
 
     try {
+      // console.log('[DEBUG] req.body is Buffer:', Buffer.isBuffer(req.body))          // ADD
+      // console.log('[DEBUG] req.body typeof:', typeof req.body)                        // ADD
+      // console.log('[DEBUG] req.body raw:', req.body)                                  // ADD
+
       const payloadString = Buffer.isBuffer(req.body)
         ? req.body.toString('utf8')
         : typeof req.body === 'string'
           ? req.body
           : JSON.stringify(req.body)
 
+      console.log('[DEBUG] payloadString:', payloadString)                            // ADD
+
       evt = wh.verify(payloadString, {
         'svix-id': svix_id,
         'svix-timestamp': svix_timestamp,
         'svix-signature': svix_signature,
       })
+      evt = JSON.parse(payloadString)
+      console.log('[DEBUG] evt after verify:', evt)                                   // ADD
     } catch (err) {
       console.error('[Clerk Webhook] Signature verification failed:', err)
       return res.status(400).json({ error: 'Invalid webhook signature' })
@@ -67,13 +75,13 @@ clerkWebhookRouter.post(
 
         // Upsert user into PostgreSQL (default role: CUSTOMER)
         await pool.query(
-          `INSERT INTO users (clerk_user_id, email, name, role, updated_at)
+          `INSERT INTO users ("clerkUserId", email, name, role, "updatedAt")
            VALUES ($1, $2, $3, 'CUSTOMER', NOW())
-           ON CONFLICT (clerk_user_id) 
+           ON CONFLICT ("clerkUserId") 
            DO UPDATE SET 
              email = EXCLUDED.email,
              name = COALESCE(EXCLUDED.name, users.name),
-             updated_at = NOW()`,
+             "updatedAt" = NOW()`,
           [clerkUserId, email, name]
         )
 
@@ -81,7 +89,7 @@ clerkWebhookRouter.post(
       } else if (eventType === 'user.deleted') {
         const clerkUserId: string = data.id
         if (clerkUserId) {
-          await pool.query(`DELETE FROM users WHERE clerk_user_id = $1`, [clerkUserId])
+          await pool.query(`DELETE FROM users WHERE "clerkUserId" = $1`, [clerkUserId])
           console.log(`[Clerk Webhook] Deleted user: ${clerkUserId}`)
         }
       }

@@ -20,6 +20,7 @@ export function CartDrawer() {
     cartSubtotal,
     cartCount,
     navigateTo,
+    shippingSettings,
   } = useShop()
 
   const { user } = useUser()
@@ -27,8 +28,7 @@ export function CartDrawer() {
 
   if (!isCartOpen && !isCheckoutOpen) return null
 
-
-  const freeShippingThreshold = 1499
+  const freeShippingThreshold = shippingSettings.freeThreshold || 1999
   const amountToFreeShipping = Math.max(0, freeShippingThreshold - cartSubtotal)
   const shippingProgress = Math.min(100, (cartSubtotal / freeShippingThreshold) * 100)
 
@@ -99,23 +99,17 @@ export function CartDrawer() {
             </button>
           </div>
 
-          {/* Free Shipping Progress */}
-          <div className="bg-cream/70 px-5 py-3 border-b border-border/60">
-            {amountToFreeShipping > 0 ? (
-              <p className="text-xs text-charcoal mb-1.5 font-medium">
-                Add <span className="font-bold text-[#769055]">Rs. {amountToFreeShipping.toLocaleString('en-IN')}.00</span> more to unlock <strong className="text-[#769055]">FREE SHIPPING</strong>!
+          {/* Free Shipping Policy Banner */}
+          <div className="bg-emerald-50 px-5 py-2.5 border-b border-emerald-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🚚</span>
+              <p className="text-xs font-bold text-emerald-900">
+                FREE Shipping on All Online Orders!
               </p>
-            ) : (
-              <p className="text-xs font-bold text-green-700 mb-1.5 flex items-center gap-1">
-                🎉 Congratulations! You have unlocked FREE Shipping!
-              </p>
-            )}
-            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-[#769055] h-full transition-all duration-500 ease-out"
-                style={{ width: `${shippingProgress}%` }}
-              />
             </div>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded uppercase">
+              100% Free
+            </span>
           </div>
 
           {/* Cart Items List */}
@@ -215,8 +209,8 @@ export function CartDrawer() {
                 </span>
               </div>
               <div className="flex justify-between text-xs text-muted">
-                <span>Shipping</span>
-                <span>{amountToFreeShipping === 0 ? 'FREE' : 'Rs. 99.00'}</span>
+                <span>Shipping ({shippingSettings.defaultCourier})</span>
+                <span className="font-bold text-emerald-800">FREE (Online Orders)</span>
               </div>
 
               {/* Login Status & Checkout Protection — Clerk-based */}

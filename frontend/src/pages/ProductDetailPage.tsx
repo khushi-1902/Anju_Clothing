@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useShop } from '../context/ShopContext'
 import { useProduct, useNewArrivals, fetchProductReviews, submitProductReview, type ApiReview } from '../lib/api'
@@ -22,7 +22,6 @@ interface ReviewItem {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  // Pinks & Reds
   'red': '#DC2626',
   'dark red': '#991B1B',
   'blood red': '#B91C1C',
@@ -39,8 +38,6 @@ const COLOR_MAP: Record<string, string> = {
   'maroon': '#800000',
   'mahroon': '#800000',
   'burgundy': '#4A0E17',
-
-  // Blues & Teals
   'navy': '#001F3F',
   'navy blue': '#0A192F',
   'blue': '#2563EB',
@@ -51,8 +48,6 @@ const COLOR_MAP: Record<string, string> = {
   'teal': '#008080',
   'teal green': '#0D9488',
   'peacock blue': '#005F73',
-
-  // Greens
   'green': '#15803D',
   'dark green': '#064E3B',
   'bottle green': '#14532D',
@@ -67,8 +62,6 @@ const COLOR_MAP: Record<string, string> = {
   'olive': '#769055',
   'olive green': '#769055',
   'lime': '#84CC16',
-
-  // Yellows, Oranges & Golds
   'golden': '#D4AF37',
   'gold': '#D4AF37',
   'mustard': '#D97706',
@@ -81,16 +74,12 @@ const COLOR_MAP: Record<string, string> = {
   'rust orange': '#9A3412',
   'peach': '#FDBA74',
   'coral': '#FB7185',
-
-  // Purples & Pastels
   'purple': '#7E22CE',
   'dark purple': '#581C87',
   'lavender': '#C084FC',
   'violet': '#7C3AED',
   'lilac': '#C8A2C8',
   'mauve': '#E0B0FF',
-
-  // Neutrals & Monochromes
   'black': '#18181B',
   'white': '#FFFFFF',
   'off white': '#FAF8F5',
@@ -113,7 +102,61 @@ function resolveColorHex(color: string): string {
     if (clean.includes(key)) return val
   }
   if (clean.startsWith('#') || clean.startsWith('rgb') || clean.startsWith('hsl')) return color
-  return '#C9973A' // warm luxury gold
+  return '#C9973A'
+}
+
+/** Craft heritage reference used for the "About This Craft" panel — keyed by
+ * terms that commonly appear in `fabric` / `work` fields. Falls back to a
+ * general handcraft description when nothing matches. */
+const CRAFT_LIBRARY: { match: RegExp; region: string; technique: string; note: string }[] = [
+  {
+    match: /zardozi/i,
+    region: 'Lucknow, Uttar Pradesh',
+    technique: 'Zardozi Embroidery',
+    note: 'Metallic thread, beads and sequins are hand-stitched over a marked outline, a technique once reserved for royal courts and still practiced by hand today.',
+  },
+  {
+    match: /chikankari/i,
+    region: 'Lucknow, Uttar Pradesh',
+    technique: 'Chikankari Embroidery',
+    note: 'A shadow-work embroidery style stitched with white thread on fine fabric, where every motif is drawn and hand-embroidered by a single artisan from start to finish.',
+  },
+  {
+    match: /gota\s*patti/i,
+    region: 'Jaipur, Rajasthan',
+    technique: 'Gota Patti Work',
+    note: 'Metallic ribbon is cut and folded into motifs, then appliquéd by hand — a technique that can take a single artisan several days per garment.',
+  },
+  {
+    match: /banarasi|katan|silk/i,
+    region: 'Varanasi, Uttar Pradesh',
+    technique: 'Handloom Weaving',
+    note: 'Woven on traditional pit looms by master weavers, some pieces take upward of a week on the loom before a single thread is cut.',
+  },
+  {
+    match: /mirror/i,
+    region: 'Kutch, Gujarat',
+    technique: 'Mirror (Shisha) Work',
+    note: 'Small mirrors are set into hand-embroidered frames, a technique traditionally used to catch light across open desert landscapes.',
+  },
+  {
+    match: /zari/i,
+    region: 'Surat, Gujarat',
+    technique: 'Zari Thread Work',
+    note: 'Fine gold and silver-toned thread is woven or embroidered into the fabric, a craft with roots going back centuries in western India.',
+  },
+]
+
+function getCraftStory(fabric?: string, work?: string) {
+  const source = `${fabric || ''} ${work || ''}`
+  for (const entry of CRAFT_LIBRARY) {
+    if (entry.match.test(source)) return entry
+  }
+  return {
+    region: 'Artisan workshops across India',
+    technique: 'Hand-finished Craftsmanship',
+    note: 'Every piece passes through several pairs of hands — cutting, stitching, finishing and quality checks — before it ever reaches you.',
+  }
 }
 
 export function ProductDetailPage() {
@@ -179,12 +222,10 @@ function ProductDetailBody({ product }: { product: Product }) {
     variants = [],
   } = product
 
-  // 1. Available Colors strictly from Database Variants or detected from actual title
   const availableColors = useMemo(() => {
     if (rawColors && rawColors.length > 0) {
       return rawColors
     }
-    // If no multiple color variants exist in database, extract from title if mentioned
     const titleLower = name.toLowerCase()
     for (const colKey of Object.keys(COLOR_MAP)) {
       if (colKey === 'as shown in picture' || colKey === 'as shown') continue
@@ -210,7 +251,6 @@ function ProductDetailBody({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
 
-  // 2. Active Database Variant Price Tracking (Accurate to PostgreSQL database)
   const activeVariant = useMemo(() => {
     if (!variants || variants.length === 0) return null
     const matched = variants.find((v) => {
@@ -239,11 +279,9 @@ function ProductDetailBody({ product }: { product: Product }) {
       ? Math.round(((activeOriginalPrice - activePrice) / activeOriginalPrice) * 100)
       : 0
 
-  // 3. Database Reviews System
   const [dbReviews, setDbReviews] = useState<ReviewItem[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(true)
 
-  // Review Form state
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [submittingReview, setSubmittingReview] = useState(false)
   const [newRating, setNewRating] = useState(5)
@@ -254,7 +292,6 @@ function ProductDetailBody({ product }: { product: Product }) {
   const [reviewComment, setReviewComment] = useState('')
   const [reviewSuccess, setReviewSuccess] = useState(false)
 
-  // Load reviews from PostgreSQL database
   useEffect(() => {
     let cancelled = false
     setReviewsLoading(true)
@@ -280,7 +317,6 @@ function ProductDetailBody({ product }: { product: Product }) {
               }))
             )
           } else {
-            // Curated initial reviews for new items
             setDbReviews([
               {
                 id: 'init-1',
@@ -331,23 +367,19 @@ function ProductDetailBody({ product }: { product: Product }) {
     }
   }, [id])
 
-  // Reset selection when product changes
   useEffect(() => {
     const initialColor = availableColors[0] || 'Default'
     setSelectedSize(sizes[0] || 'Standard')
     setSelectedColor(initialColor)
     setQuantity(1)
 
-    // Check if initial color has specific dress image
     const matchingImg = colorImageMap[initialColor.trim()] || allImages[0] || ''
     setSelectedImage(matchingImg)
   }, [product, availableColors, allImages, colorImageMap])
 
-  // 4. COLOR SELECT HANDLER - Switches to that specific color dress image
   const handleColorSelect = (colorName: string) => {
     setSelectedColor(colorName)
 
-    // 1. Check direct variant match with image
     if (variants && variants.length > 0) {
       const variantWithImg = variants.find(
         (v) => v.color?.toLowerCase() === colorName.toLowerCase() && v.imageUrl
@@ -358,14 +390,12 @@ function ProductDetailBody({ product }: { product: Product }) {
       }
     }
 
-    // 2. Check colorImageMap directly
     const directMatch = colorImageMap[colorName.trim()]
     if (directMatch) {
       setSelectedImage(directMatch)
       return
     }
 
-    // 3. Check if color name matches an image in allImages index
     const colorIndex = availableColors.indexOf(colorName)
     if (colorIndex >= 0 && colorIndex < allImages.length) {
       const imgTarget = allImages[colorIndex]
@@ -400,7 +430,6 @@ function ProductDetailBody({ product }: { product: Product }) {
     setTimeout(() => setAdded(false), 2000)
   }
 
-  // Submit Review to PostgreSQL Database
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!reviewerName.trim() || !reviewComment.trim()) return
@@ -465,6 +494,21 @@ function ProductDetailBody({ product }: { product: Product }) {
       activePrice * quantity
     ).toLocaleString('en-IN')}.00\n\nPlease confirm availability and payment options.`
   )}`
+
+  // ---- Magnifier (desktop image zoom on hover) ----
+  const imageWrapRef = useRef<HTMLDivElement>(null)
+  const [zoomActive, setZoomActive] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
+
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = imageWrapRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setZoomPos({ x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) })
+  }
+
+  const craftStory = useMemo(() => getCraftStory(fabric, work), [fabric, work])
 
   const accordionItems: AccordionItemData[] = [
     {
@@ -549,7 +593,6 @@ function ProductDetailBody({ product }: { product: Product }) {
       defaultOpen: false,
       content: (
         <div className="space-y-5">
-          {/* Header with rating + Create Review button */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
             <div className="flex items-center gap-2">
               <StarRating rating={averageRating} />
@@ -565,7 +608,6 @@ function ProductDetailBody({ product }: { product: Product }) {
             </button>
           </div>
 
-          {/* Write a Review Form */}
           {showReviewForm && (
             <form onSubmit={handleReviewSubmit} className="bg-[#FAF7F2] border border-[#769055]/30 p-4 sm:p-5 space-y-4">
               <h4 className="font-display text-sm font-bold text-charcoal uppercase tracking-wider">Write Your Review</h4>
@@ -576,7 +618,6 @@ function ProductDetailBody({ product }: { product: Product }) {
                 </div>
               )}
 
-              {/* Star Picker */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-charcoal mb-1.5">Rating *</label>
                 <div className="flex items-center gap-1.5">
@@ -673,7 +714,6 @@ function ProductDetailBody({ product }: { product: Product }) {
             </form>
           )}
 
-          {/* List of Customer Reviews */}
           {reviewsLoading ? (
             <p className="text-xs text-muted py-2">Loading customer reviews…</p>
           ) : dbReviews.length > 0 ? (
@@ -727,35 +767,35 @@ function ProductDetailBody({ product }: { product: Product }) {
   ]
 
   return (
-    <div className="min-h-screen py-10 bg-ivory">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+    <div className="min-h-screen pb-24 lg:pb-10 pt-6 sm:pt-10 bg-ivory">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14">
         {/* Breadcrumbs */}
-        <nav className="text-xs text-muted flex items-center gap-2" aria-label="Breadcrumb">
-          <button onClick={() => navigateTo('home')} className="hover:text-olive transition-colors cursor-pointer">
+        <nav className="text-xs text-muted flex items-center gap-2 overflow-x-auto whitespace-nowrap" aria-label="Breadcrumb">
+          <button onClick={() => navigateTo('home')} className="hover:text-olive transition-colors cursor-pointer shrink-0">
             Home
           </button>
-          <span>/</span>
+          <span className="shrink-0">/</span>
           <button
             onClick={() => navigateTo('all-products', undefined, categorySlug)}
-            className="hover:text-olive transition-colors cursor-pointer"
+            className="hover:text-olive transition-colors cursor-pointer shrink-0"
           >
             {category || 'All Products'}
           </button>
-          <span>/</span>
-          <span className="text-charcoal font-semibold truncate max-w-[200px] sm:max-w-none">{name}</span>
+          <span className="shrink-0">/</span>
+          <span className="text-charcoal font-semibold truncate">{name}</span>
         </nav>
 
         {/* Main Product Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 bg-white p-4 sm:p-8 lg:p-10 border border-border/80 shadow-xs items-start">
-          {/* Images Section (Sticky on desktop so it stays beside details with no dead space) */}
-          <div className="lg:col-span-6 flex flex-col-reverse sm:flex-row gap-4 lg:sticky lg:top-24 self-start">
+        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 bg-white p-3.5 sm:p-8 lg:p-10 border border-border/80 shadow-xs items-start">
+          {/* Images Section */}
+          <div className="lg:col-span-6 flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 lg:sticky lg:top-24 self-start">
             {allImages.length > 1 && (
-              <div className="flex sm:flex-col gap-3 shrink-0 overflow-x-auto sm:overflow-y-auto max-h-[520px]">
+              <div className="flex sm:flex-col gap-2.5 sm:gap-3 shrink-0 overflow-x-auto sm:overflow-y-auto max-h-none sm:max-h-[520px] pb-1 sm:pb-0">
                 {allImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(image)}
-                    className={`w-16 h-20 sm:w-20 sm:h-24 shrink-0 overflow-hidden border-2 transition-all cursor-pointer ${selectedImage === image ? 'border-[#769055] shadow-sm' : 'border-transparent opacity-70 hover:opacity-100'
+                    className={`w-14 h-18 sm:w-20 sm:h-24 shrink-0 overflow-hidden border-2 transition-all cursor-pointer ${selectedImage === image ? 'border-[#769055] shadow-sm' : 'border-transparent opacity-70 hover:opacity-100'
                       }`}
                   >
                     <ImagePlaceholder src={image} alt={`Thumbnail ${index + 1}`} aspectRatio="4/5" />
@@ -764,26 +804,49 @@ function ProductDetailBody({ product }: { product: Product }) {
               </div>
             )}
 
-            <div className="flex-1 relative overflow-hidden group bg-[#FAF7F2] rounded-xs">
+            <div
+              ref={imageWrapRef}
+              className="flex-1 relative overflow-hidden group bg-[#FAF7F2] rounded-xs cursor-zoom-in"
+              onMouseEnter={() => setZoomActive(true)}
+              onMouseLeave={() => setZoomActive(false)}
+              onMouseMove={handleImageMouseMove}
+            >
               <ImagePlaceholder src={selectedImage} alt={name} aspectRatio="4/5" label={name} />
-              <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
+              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-1.5 z-10">
                 {(tag || discount || discountPercent > 0) && (
-                  <span className="text-xs font-bold px-2.5 py-1 text-white bg-black/90 uppercase shadow-sm">
+                  <span className="text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 text-white bg-black/90 uppercase shadow-sm">
                     {tag || discount || `${discountPercent}% OFF`}
                   </span>
                 )}
                 {sold && (
-                  <span className="text-xs font-semibold px-2.5 py-1 text-charcoal bg-white/90 backdrop-blur-xs shadow-xs">
+                  <span className="text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-1 text-charcoal bg-white/90 backdrop-blur-xs shadow-xs">
                     🔥 {sold}
                   </span>
                 )}
               </div>
+              {/* Zoom hint, desktop only */}
+              <span className="hidden lg:flex absolute bottom-3 right-3 items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-charcoal bg-white/85 backdrop-blur-xs px-2 py-1 shadow-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                🔍 Hover to zoom
+              </span>
             </div>
+
+            {/* Magnifier pane — desktop/xl only, beside the image */}
+            {zoomActive && selectedImage && (
+              <div
+                className="hidden xl:block absolute top-0 left-full ml-6 w-[420px] aspect-[4/5] border border-border/80 shadow-lg bg-[#FAF7F2] z-20 pointer-events-none"
+                style={{
+                  backgroundImage: `url(${selectedImage})`,
+                  backgroundSize: '220%',
+                  backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                  backgroundRepeat: 'no-repeat',
+                }}
+              />
+            )}
           </div>
 
           {/* Details & Selection Section */}
-          <div className="lg:col-span-6 flex flex-col space-y-6 text-left">
-            <div className="space-y-4">
+          <div className="lg:col-span-6 flex flex-col space-y-5 sm:space-y-6 text-left">
+            <div className="space-y-3.5 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#c9973a]">
                   {category || 'Anju Clothing'}
@@ -805,16 +868,15 @@ function ProductDetailBody({ product }: { product: Product }) {
                       d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                     />
                   </svg>
-                  <span className="font-semibold">{isWished ? 'Saved' : 'Wishlist'}</span>
+                  <span className="font-semibold hidden sm:inline">{isWished ? 'Saved' : 'Wishlist'}</span>
                 </button>
               </div>
 
-              <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-charcoal leading-snug">
+              <h1 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-charcoal leading-snug">
                 {name}
               </h1>
 
-              {/* Star Rating Badge */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <StarRating rating={averageRating} />
                 <span className="text-xs font-bold text-charcoal">{averageRating} / 5.0</span>
                 <button
@@ -829,14 +891,14 @@ function ProductDetailBody({ product }: { product: Product }) {
               </div>
 
               {/* Price Row */}
-              <div className="flex items-baseline justify-between py-2 border-y border-border/60">
-                <div className="flex items-baseline gap-3">
-                  <span className="font-display text-2xl sm:text-3xl font-bold text-[#2c2420]">
+              <div className="flex items-baseline justify-between py-2 border-y border-border/60 flex-wrap gap-y-1">
+                <div className="flex items-baseline gap-2.5 sm:gap-3 flex-wrap">
+                  <span className="font-display text-xl sm:text-3xl font-bold text-[#2c2420]">
                     Rs. {activePrice.toLocaleString('en-IN')}.00
                   </span>
                   {activeOriginalPrice > activePrice && (
                     <>
-                      <span className="text-base text-muted line-through">
+                      <span className="text-sm sm:text-base text-muted line-through">
                         Rs. {activeOriginalPrice.toLocaleString('en-IN')}.00
                       </span>
                       <span className="text-xs text-green-700 font-bold bg-green-50 px-2 py-0.5 border border-green-200">
@@ -849,15 +911,15 @@ function ProductDetailBody({ product }: { product: Product }) {
               </div>
               <p className="text-[11px] text-muted -mt-2">Tax included. Free shipping across India.</p>
 
-              {/* 1. INTERACTIVE COLOR SELECTION - Changes dress photo when clicked */}
+              {/* Color Selection */}
               <div className="pt-2 border-t border-border/40 space-y-2">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-1">
                   <label className="text-xs font-bold uppercase tracking-wider text-charcoal">
                     Colour: <span className="text-[#769055] font-semibold normal-case ml-1">{selectedColor}</span>
                   </label>
-                  <span className="text-[11px] text-muted font-medium">Click shade to view dress</span>
+                  <span className="text-[11px] text-muted font-medium hidden sm:inline">Tap a shade to view the dress</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                   {availableColors.map((colorName, idx) => {
                     const hex = resolveColorHex(colorName)
                     const isSelected = selectedColor === colorName
@@ -867,7 +929,7 @@ function ProductDetailBody({ product }: { product: Product }) {
                         key={idx}
                         type="button"
                         onClick={() => handleColorSelect(colorName)}
-                        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-xs text-xs font-medium transition-all cursor-pointer ${isSelected
+                        className={`inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 border rounded-xs text-xs font-medium transition-all cursor-pointer ${isSelected
                           ? 'border-[#769055] bg-white ring-2 ring-[#769055]/40 text-charcoal shadow-xs font-bold scale-102'
                           : 'border-gray-200 bg-[#FAF7F2] text-charcoal hover:border-gray-400'
                           }`}
@@ -884,7 +946,7 @@ function ProductDetailBody({ product }: { product: Product }) {
                 </div>
               </div>
 
-              {/* 2. SIZE SELECTION SECTION */}
+              {/* Size Selection */}
               <div className="pt-2 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold uppercase tracking-wider text-charcoal">
@@ -910,10 +972,9 @@ function ProductDetailBody({ product }: { product: Product }) {
                 </div>
               </div>
 
-              {/* 3. QUANTITY & CTA BUTTONS */}
-              <div className="pt-4 space-y-3 border-t border-border/60">
+              {/* Quantity & CTA — hidden on mobile, replaced by sticky bar below */}
+              <div className="hidden lg:block pt-4 space-y-3 border-t border-border/60">
                 <div className="flex items-center gap-3">
-                  {/* Quantity Counter */}
                   <div className="flex items-center border border-gray-300 bg-white shrink-0">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -932,7 +993,6 @@ function ProductDetailBody({ product }: { product: Product }) {
                     </button>
                   </div>
 
-                  {/* Add to Cart Button */}
                   <button
                     onClick={handleAddToCart}
                     className={`flex-1 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-white transition-all shadow-sm cursor-pointer ${added ? 'bg-[#c9973a]' : 'bg-[#769055] hover:bg-[#5e7343]'
@@ -941,7 +1001,6 @@ function ProductDetailBody({ product }: { product: Product }) {
                     {added ? '✓ Added' : 'Add To Cart'}
                   </button>
 
-                  {/* Wishlist Button */}
                   <button
                     type="button"
                     onClick={() => toggleWishlist(id)}
@@ -964,7 +1023,6 @@ function ProductDetailBody({ product }: { product: Product }) {
                   </button>
                 </div>
 
-                {/* BUY NOW Button */}
                 <button
                   type="button"
                   onClick={() => {
@@ -976,7 +1034,6 @@ function ProductDetailBody({ product }: { product: Product }) {
                   Buy Now
                 </button>
 
-                {/* WhatsApp Order Button */}
                 <a
                   href={whatsappUrl}
                   target="_blank"
@@ -995,7 +1052,39 @@ function ProductDetailBody({ product }: { product: Product }) {
                 </div>
               </div>
 
-              {/* Accordion Info Section directly below CTA buttons */}
+              {/* Mobile-only compact actions (sticky bar below covers Add to Cart / Buy) */}
+              <div className="lg:hidden pt-3 space-y-2.5 border-t border-border/60">
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                  Order via WhatsApp
+                </a>
+                <div className="bg-[#FAF7F2] p-2 text-[11px] text-charcoal flex items-center justify-between border border-border/50">
+                  <span>🚚 Free Shipping</span>
+                  <span className="text-muted">Ships in 24-48 Hrs</span>
+                </div>
+              </div>
+
+              {/* Craft Story — unique to this site */}
+              <div className="pt-3 border-t border-border/60">
+                <div className="relative overflow-hidden bg-[#2c2420] text-[#FAF7F2] p-4 sm:p-5 flex gap-4 items-start">
+                  <div className="shrink-0 w-10 h-10 rounded-full bg-[#c9973a]/20 border border-[#c9973a]/50 flex items-center justify-center text-lg">
+                    🧵
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#c9973a]">About This Craft</p>
+                    <p className="text-sm font-semibold">{craftStory.technique} · {craftStory.region}</p>
+                    <p className="text-xs text-[#FAF7F2]/75 leading-relaxed">{craftStory.note}</p>
+                  </div>
+                </div>
+              </div>
+
               <div id="product-accordion" className="pt-4 border-t border-border/60">
                 <Accordion items={accordionItems} />
               </div>
@@ -1003,16 +1092,13 @@ function ProductDetailBody({ product }: { product: Product }) {
           </div>
         </div>
 
-
-        {/* Trust Badges */}
         <TrustBar />
 
-        {/* Related Products Carousel */}
         {relatedProducts.length > 0 && (
-          <section className="pt-8">
-            <div className="text-center mb-10">
+          <section className="pt-6 sm:pt-8">
+            <div className="text-center mb-8 sm:mb-10">
               <p className="text-[#c9973a] text-xs uppercase tracking-[0.3em] font-semibold mb-2">Complete The Look</p>
-              <h2 className="font-display text-3xl font-bold text-charcoal">You May Also Love</h2>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-charcoal">You May Also Love</h2>
               <p className="text-muted text-xs sm:text-sm mt-2">Handpicked complementary styles tailored for your celebrations</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-8">
@@ -1022,6 +1108,62 @@ function ProductDetailBody({ product }: { product: Product }) {
             </div>
           </section>
         )}
+      </div>
+
+      {/* Sticky mobile buy bar */}
+      <div
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border/80 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-3 py-2.5"
+        style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom, 0px))' }}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="flex flex-col leading-tight shrink-0">
+            <span className="font-display text-base font-bold text-charcoal">
+              Rs. {activePrice.toLocaleString('en-IN')}
+            </span>
+            {activeOriginalPrice > activePrice && (
+              <span className="text-[10px] text-muted line-through">
+                Rs. {activeOriginalPrice.toLocaleString('en-IN')}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center border border-gray-300 bg-white shrink-0">
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              className="px-2.5 py-2 text-sm hover:bg-gray-100 font-bold cursor-pointer"
+              aria-label="Decrease quantity"
+            >
+              -
+            </button>
+            <span className="px-2 py-2 text-xs font-bold text-charcoal min-w-6 text-center">{quantity}</span>
+            <button
+              onClick={() => setQuantity(quantity + 1)}
+              className="px-2.5 py-2 text-sm hover:bg-gray-100 font-bold cursor-pointer"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
+
+          <button
+            onClick={handleAddToCart}
+            className={`flex-1 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white transition-all shadow-sm cursor-pointer ${added ? 'bg-[#c9973a]' : 'bg-[#769055] hover:bg-[#5e7343]'
+              }`}
+          >
+            {added ? '✓ Added' : 'Add To Cart'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              addToCart(product, selectedSize, quantity, selectedColor)
+              window.location.href = whatsappUrl
+            }}
+            className="flex-1 py-2.5 bg-black hover:bg-neutral-800 text-white text-[11px] font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer"
+          >
+            Buy Now
+          </button>
+        </div>
       </div>
     </div>
   )

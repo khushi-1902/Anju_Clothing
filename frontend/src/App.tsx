@@ -17,12 +17,23 @@ import { AuthPage } from './pages/AuthPage'
 import { TrackOrderPage } from './pages/TrackOrderPage'
 import { OrdersPage } from './pages/OrdersPage'
 
+// Admin Module (Phase 1 & Phase 2)
+import { AdminRouteGuard } from './admin/AdminRouteGuard'
+import { AdminLayout } from './admin/AdminLayout'
+import { AdminDashboardPage } from './admin/pages/AdminDashboardPage'
+import { AdminProductsPage } from './admin/pages/AdminProductsPage'
+import { AdminOrdersPage } from './admin/pages/AdminOrdersPage'
+import { AdminCustomersPage } from './admin/pages/AdminCustomersPage'
+import { AdminSettingsPage } from './admin/pages/AdminSettingsPage'
+
 function SeoHandler() {
   const location = useLocation()
 
   useEffect(() => {
     const path = location.pathname
-    if (path === '/') {
+    if (path.startsWith('/admin')) {
+      document.title = 'Store Admin | Anju Clothing Management'
+    } else if (path === '/') {
       document.title = 'Anju Clothing | Luxury Indian Ethnic Wear & Handcrafted Festive Outfits'
     } else if (path.startsWith('/all-products') || path.startsWith('/category')) {
       document.title = 'Explore All Collections | Anju Clothing'
@@ -75,8 +86,34 @@ function MainContent() {
   )
 }
 
-
 export default function App() {
+  const location = useLocation()
+  const isAdminRoute = location.pathname.startsWith('/admin')
+
+  if (isAdminRoute) {
+    return (
+      <>
+        <SeoHandler />
+        <Routes>
+          <Route
+            path="/admin"
+            element={
+              <AdminRouteGuard>
+                <AdminLayout />
+              </AdminRouteGuard>
+            }
+          >
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="products" element={<AdminProductsPage />} />
+            <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="customers" element={<AdminCustomersPage />} />
+            <Route path="settings" element={<AdminSettingsPage />} />
+          </Route>
+        </Routes>
+      </>
+    )
+  }
+
   return (
     <ShopProvider>
       <SeoHandler />

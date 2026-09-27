@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useUser, SignedIn, SignedOut, SignInButton, UserProfile } from '@clerk/clerk-react'
 import { fetchUserOrders, Order } from '../lib/api'
 import { STORE_INFO } from '../data/products'
@@ -7,10 +7,21 @@ import { STORE_INFO } from '../data/products'
 export function OrdersPage() {
   const { user } = useUser()
   const navigate = useNavigate()
+  const location = useLocation()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'orders' | 'profile'>('orders')
+  
+  const isAccountRoute = location.pathname.startsWith('/account') || location.pathname.startsWith('/profile')
+  const [activeTab, setActiveTab] = useState<'orders' | 'profile'>(isAccountRoute ? 'profile' : 'orders')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/account') || location.pathname.startsWith('/profile')) {
+      setActiveTab('profile')
+    } else if (location.pathname.startsWith('/orders')) {
+      setActiveTab('orders')
+    }
+  }, [location.pathname])
 
   const userIdentifier =
     user?.id ||
@@ -144,7 +155,10 @@ export function OrdersPage() {
           {/* Navigation Tabs */}
           <div className="flex border-b border-gray-200 bg-white px-3 sm:px-6 overflow-x-auto scrollbar-none">
             <button
-              onClick={() => setActiveTab('orders')}
+              onClick={() => {
+                setActiveTab('orders')
+                navigate('/orders')
+              }}
               className={`py-3 sm:py-4 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                 activeTab === 'orders'
                   ? 'border-[#769055] text-[#769055]'
@@ -154,7 +168,10 @@ export function OrdersPage() {
               <span>🛍️</span> My Orders ({orders.length})
             </button>
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => {
+                setActiveTab('profile')
+                navigate('/account')
+              }}
               className={`py-3 sm:py-4 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                 activeTab === 'profile'
                   ? 'border-[#769055] text-[#769055]'
@@ -337,7 +354,7 @@ export function OrdersPage() {
           {activeTab === 'profile' && (
             <div className="bg-white border border-[#EBE4D8] p-2 sm:p-6 shadow-sm overflow-x-auto">
               <div className="min-w-full">
-                <UserProfile path="/account" />
+                <UserProfile routing="hash" />
               </div>
             </div>
           )}

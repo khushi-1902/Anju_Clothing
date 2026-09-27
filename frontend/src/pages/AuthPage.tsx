@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { SignIn, SignUp } from '@clerk/clerk-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { SignIn, SignUp, useUser, useClerk, useAuth, SignedIn, SignedOut } from '@clerk/clerk-react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import anjuLogo from '../assets/anju-clothing-logo.svg'
+import { checkAuthRole } from '../admin/adminApi'
 
 interface AuthPageProps {
   initialMode?: 'sign-in' | 'sign-up'
@@ -10,171 +12,261 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
   const [searchParams] = useSearchParams()
   const redirectUrl = searchParams.get('redirect_url') || '/'
   const [activeTab, setActiveTab] = useState<'sign-in' | 'sign-up'>(initialMode)
+  const { user } = useUser()
+  const { getToken, isSignedIn } = useAuth()
+  const clerk = useClerk()
+  const navigate = useNavigate()
+  const [isAdminUser, setIsAdminUser] = useState(false)
+  const [verifyingRole, setVerifyingRole] = useState(false)
+
+  useEffect(() => {
+    setActiveTab(initialMode)
+  }, [initialMode])
+
+  useEffect(() => {
+    let active = true
+    async function checkRole() {
+      if (!isSignedIn) {
+        setIsAdminUser(false)
+        return
+      }
+      try {
+        setVerifyingRole(true)
+        const token = await getToken()
+        const res = await checkAuthRole(token)
+        if (active) {
+          const isAdm = Boolean(res?.isAdmin || res?.user?.role === 'ADMIN')
+          setIsAdminUser(isAdm)
+          // If redirect_url was specifically set to /admin and user is admin, auto redirect
+          if (isAdm && redirectUrl.startsWith('/admin')) {
+            navigate(redirectUrl, { replace: true })
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking admin role on auth page:', err)
+      } finally {
+        if (active) setVerifyingRole(false)
+      }
+    }
+
+    checkRole()
+    return () => {
+      active = false
+    }
+  }, [isSignedIn, getToken, redirectUrl, navigate])
+
+  const handleSignOut = async () => {
+    await clerk.signOut()
+    setActiveTab('sign-in')
+    setIsAdminUser(false)
+  }
+
+  const primaryEmail =
+    (user?.primaryEmailAddress?.emailAddress as string | undefined) ??
+    (user?.emailAddresses?.[0]?.emailAddress as string | undefined) ??
+    null
 
   return (
-    <div className="min-h-[calc(100vh-160px)] bg-[#FAF8F5] py-6 sm:py-12 lg:py-16 px-3 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="w-full max-w-5xl bg-white border border-[#EBE4D8] shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+    <div className="min-h-[calc(100vh-140px)] bg-[#FAF8F5] py-8 sm:py-14 px-3 sm:px-6 flex items-center justify-center">
+      <div className="w-full max-w-md mx-auto">
         
-        {/* Left Editorial / Brand Column (order-2 on mobile so form is immediately accessible, order-1 on lg) */}
-        <div className="order-2 lg:order-1 lg:col-span-5 bg-[#2C2420] text-white p-6 sm:p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
-          {/* Subtle background luxury pattern overlay */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#C9973A_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-          
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#C9973A]/20 border border-[#C9973A]/40 text-[#E8C06A] text-[10px] font-bold uppercase tracking-widest mb-4 sm:mb-6">
-              <span>✦</span> Luxury Ethnic Club
-            </div>
-            
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-white mb-2 sm:mb-3">
-              Experience Bespoke Luxury & Festive Splendour
-            </h2>
-            <p className="text-xs sm:text-sm text-[#D1C7BD] leading-relaxed mb-6 sm:mb-8">
-              Sign in to manage your orders, get real-time dispatch tracking, and enjoy exclusive member privileges.
-            </p>
-
-            {/* Perks list */}
-            <div className="space-y-3 sm:space-y-4 text-xs">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#769055]/30 text-[#A3C37B] flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-xs sm:text-sm">Live Courier & Order Tracking</h4>
-                  <p className="text-[11px] text-[#A89F95]">Get step-by-step updates from handcrafting to doorstep.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#769055]/30 text-[#A3C37B] flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-xs sm:text-sm">Exclusive Member Pre-Drops</h4>
-                  <p className="text-[11px] text-[#A89F95]">Early access to festive lehengas and royal sarees.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#769055]/30 text-[#A3C37B] flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                  ✓
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-xs sm:text-sm">1-Click Priority WhatsApp Care</h4>
-                  <p className="text-[11px] text-[#A89F95]">Direct stylist assistance for custom sizing and fitting.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10 relative z-10 flex items-center justify-between">
-            <Link
-              to="/track-order"
-              className="text-xs text-[#E8C06A] hover:underline font-semibold flex items-center gap-1.5"
-            >
-              <span>📦</span> Track an existing order as Guest →
-            </Link>
+        {/* Brand Header */}
+        <div className="text-center mb-6">
+          <Link to="/" className="inline-block hover:opacity-80 transition-opacity">
+            <img
+              src={anjuLogo}
+              alt="Anju Clothing"
+              className="h-10 sm:h-12 w-auto mx-auto object-contain"
+            />
+          </Link>
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-[#C9973A]">
+            <span>✦</span> Luxury Indian Ethnic Wear <span>✦</span>
           </div>
         </div>
 
-        {/* Right Clerk Auth Column */}
-        <div className="order-1 lg:order-2 lg:col-span-7 p-4 sm:p-8 lg:p-10 flex flex-col justify-center items-center bg-white min-w-0">
+        {/* Main Centered Form Card */}
+        <div className="bg-white border border-[#EBE4D8] shadow-xl p-5 sm:p-8 w-full overflow-hidden rounded-xl">
           
-          {/* Auth Tab Switcher */}
-          <div className="w-full max-w-md flex border-b border-gray-200 mb-6 sm:mb-8">
-            <button
-              onClick={() => setActiveTab('sign-in')}
-              className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
-                activeTab === 'sign-in'
-                  ? 'border-[#769055] text-[#769055]'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => setActiveTab('sign-up')}
-              className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
-                activeTab === 'sign-up'
-                  ? 'border-[#769055] text-[#769055]'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
+          {/* Active Logged In Session */}
+          <SignedIn>
+            <div className="text-center py-2 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#769055]/15 border-2 border-[#769055] mx-auto flex items-center justify-center overflow-hidden">
+                {user?.imageUrl ? (
+                  <img src={user.imageUrl} alt={user.fullName || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-[#769055]">
+                    {(user?.firstName?.[0] || 'U').toUpperCase()}
+                  </span>
+                )}
+              </div>
 
-          {/* Clerk Component Embedding */}
-          <div className="w-full max-w-md flex justify-center overflow-x-hidden">
-            {activeTab === 'sign-in' ? (
-              <SignIn
-                path="/sign-in"
-                signUpUrl="/sign-up"
-                fallbackRedirectUrl={redirectUrl}
-                appearance={{
-                  layout: {
-                    socialButtonsVariant: 'blockButton',
-                    logoPlacement: 'none',
-                  },
-                  variables: {
-                    colorPrimary: '#769055',
-                    colorText: '#2c2420',
-                    colorTextSecondary: '#666666',
-                    fontFamily: 'inherit',
-                  },
-                  elements: {
-                    card: 'shadow-none border-0 p-0 w-full max-w-full',
-                    rootBox: 'w-full max-w-full',
-                    headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
-                    formButtonPrimary:
-                      'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
-                    socialButtonsBlockButton:
-                      'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
-                    formFieldInput:
-                      'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
-                    footerActionLink: 'text-[#769055] hover:underline font-bold',
-                  },
-                }}
-              />
-            ) : (
-              <SignUp
-                path="/sign-up"
-                signInUrl="/sign-in"
-                fallbackRedirectUrl={redirectUrl}
-                appearance={{
-                  layout: {
-                    socialButtonsVariant: 'blockButton',
-                    logoPlacement: 'none',
-                  },
-                  variables: {
-                    colorPrimary: '#769055',
-                    colorText: '#2c2420',
-                    colorTextSecondary: '#666666',
-                    fontFamily: 'inherit',
-                  },
-                  elements: {
-                    card: 'shadow-none border-0 p-0 w-full max-w-full',
-                    rootBox: 'w-full max-w-full',
-                    headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
-                    formButtonPrimary:
-                      'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
-                    socialButtonsBlockButton:
-                      'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
-                    formFieldInput:
-                      'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
-                    footerActionLink: 'text-[#769055] hover:underline font-bold',
-                  },
-                }}
-              />
-            )}
-          </div>
+              <div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="inline-block px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded">
+                    ✓ Currently Signed In
+                  </span>
+                  {isAdminUser && (
+                    <span className="inline-block px-2.5 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-extrabold uppercase tracking-wider rounded shadow-xs">
+                      👑 STORE ADMIN
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-display text-xl font-bold text-charcoal">
+                  Welcome, {user?.fullName || user?.firstName || 'Valued Member'}!
+                </h3>
+                {primaryEmail && (
+                  <p className="text-xs font-mono text-gray-500 mt-1">{primaryEmail}</p>
+                )}
+              </div>
 
-          <div className="mt-6 text-center text-[11px] text-gray-500">
-            By continuing, you agree to Anju Clothing's{' '}
-            <span className="underline cursor-pointer">Terms of Service</span> and{' '}
-            <span className="underline cursor-pointer">Privacy Policy</span>.
-          </div>
+              <div className="space-y-2.5 pt-2">
+                {isAdminUser && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="w-full py-3 bg-gradient-to-r from-[#202223] to-[#2c2420] hover:from-black hover:to-[#1a1512] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer rounded-lg flex items-center justify-center gap-2 border border-amber-500/40"
+                  >
+                    <span>👑 Open Admin Dashboard →</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="w-full py-3 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer rounded-lg"
+                >
+                  🛍️ View My Orders & Account →
+                </button>
+                
+                <button
+                  onClick={() => navigate('/all-products')}
+                  className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-charcoal text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-lg"
+                >
+                  Explore Collections
+                </button>
+
+                <div className="pt-3 border-t border-gray-100">
+                  <button
+                    onClick={handleSignOut}
+                    className="text-xs text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer py-1"
+                  >
+                    🚪 Sign Out / Log into a Different Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          </SignedIn>
+
+          {/* Signed Out — Form Tabs & Clerk Component */}
+          <SignedOut>
+            {/* Tab Switcher */}
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                type="button"
+                onClick={() => setActiveTab('sign-in')}
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                  activeTab === 'sign-in'
+                    ? 'border-[#769055] text-[#769055]'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Log In
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('sign-up')}
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                  activeTab === 'sign-up'
+                    ? 'border-[#769055] text-[#769055]'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+
+            {/* Clerk Form Rendering */}
+            <div className="w-full flex justify-center overflow-x-hidden min-h-[380px]">
+              {activeTab === 'sign-in' ? (
+                <SignIn
+                  routing="hash"
+                  fallbackRedirectUrl={redirectUrl}
+                  appearance={{
+                    layout: {
+                      socialButtonsVariant: 'blockButton',
+                      logoPlacement: 'none',
+                    },
+                    variables: {
+                      colorPrimary: '#769055',
+                      colorText: '#2c2420',
+                      colorTextSecondary: '#666666',
+                      fontFamily: 'inherit',
+                    },
+                    elements: {
+                      card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
+                      rootBox: 'w-full max-w-full',
+                      headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
+                      formButtonPrimary:
+                        'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
+                      socialButtonsBlockButton:
+                        'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
+                      formFieldInput:
+                        'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
+                      footerActionLink: 'text-[#769055] hover:underline font-bold',
+                    },
+                  }}
+                />
+              ) : (
+                <SignUp
+                  routing="hash"
+                  fallbackRedirectUrl={redirectUrl}
+                  appearance={{
+                    layout: {
+                      socialButtonsVariant: 'blockButton',
+                      logoPlacement: 'none',
+                    },
+                    variables: {
+                      colorPrimary: '#769055',
+                      colorText: '#2c2420',
+                      colorTextSecondary: '#666666',
+                      fontFamily: 'inherit',
+                    },
+                    elements: {
+                      card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
+                      rootBox: 'w-full max-w-full',
+                      headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
+                      formButtonPrimary:
+                        'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
+                      socialButtonsBlockButton:
+                        'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
+                      formFieldInput:
+                        'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
+                      footerActionLink: 'text-[#769055] hover:underline font-bold',
+                    },
+                  }}
+                />
+              )}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-gray-100 text-center text-[11px] text-gray-400">
+              Protected by Clerk Authentication & 256-bit SSL encryption.
+            </div>
+          </SignedOut>
+
         </div>
+
+        {/* Footer Quick Links */}
+        <div className="mt-6 text-center space-x-4 text-xs">
+          <Link to="/" className="text-gray-500 hover:text-[#769055] transition-colors">
+            ← Return to Store
+          </Link>
+          <span className="text-gray-300">•</span>
+          <Link to="/track-order" className="text-gray-500 hover:text-[#769055] transition-colors">
+            📦 Track Order as Guest
+          </Link>
+        </div>
+
       </div>
     </div>
   )
 }
+
+

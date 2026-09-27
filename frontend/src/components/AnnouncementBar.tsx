@@ -1,43 +1,45 @@
 import { Link } from 'react-router-dom'
 import { STORE_INFO } from '../data/products'
+import { useShop } from '../context/ShopContext'
 
-const WHATSAPP_URL = `https://wa.me/${STORE_INFO.phoneRaw}?text=${encodeURIComponent(
-  'Hi! I would like to enquire about your collection.'
-)}`
+function PhoneLink({ phone }: { phone: string }) {
+  const phoneDigits = phone.replace(/[^0-9]/g, '')
+  const whatsappUrl = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(
+    'Hi! I would like to enquire about your collection.'
+  )}`
 
-function PhoneLink() {
   return (
     <a
-      href={WHATSAPP_URL}
+      href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Chat with us on WhatsApp at ${STORE_INFO.phone}`}
+      aria-label={`Chat with us on WhatsApp at ${phone}`}
       className="font-bold underline underline-offset-2 hover:text-[#e8c06a] transition-colors cursor-pointer"
     >
-      {STORE_INFO.phone}
+      {phone}
     </a>
   )
 }
 
 function AnnouncementText() {
-  const { announcement, phone } = STORE_INFO
+  const { shippingSettings } = useShop()
+  const announcement = shippingSettings.announcementText || STORE_INFO.announcement
+  const phone = shippingSettings.supportPhone || STORE_INFO.phone
 
-  // If the announcement text contains the number, link just the number
   if (announcement.includes(phone)) {
     const [before, ...rest] = announcement.split(phone)
     return (
       <>
         {before}
-        <PhoneLink />
+        <PhoneLink phone={phone} />
         {rest.join(phone)}
       </>
     )
   }
 
-  // If the number was removed from the text, append it as a link
   return (
     <>
-      {announcement} <PhoneLink />
+      {announcement} <PhoneLink phone={phone} />
     </>
   )
 }

@@ -77,6 +77,19 @@ interface ShopContextType {
 
   // Helper product finder
   selectedProduct: Product | undefined
+
+  // Live PostgreSQL Store & Shipping Settings
+  shippingSettings: {
+    defaultCourier: string
+    flatFee: number
+    freeThreshold: number
+    estimatedDelivery: string
+    codAdvanceAmount?: number
+    supportPhone?: string
+    supportEmail?: string
+    announcementText?: string
+  }
+  refreshShippingSettings: () => Promise<void>
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined)
@@ -140,6 +153,42 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
   const [currentUser, setCurrentUser] = useState<ShopUser | null>(() => readSession())
+
+  const [shippingSettings, setShippingSettings] = useState<{
+    defaultCourier: string
+    flatFee: number
+    freeThreshold: number
+    estimatedDelivery: string
+    codAdvanceAmount?: number
+    supportPhone?: string
+    supportEmail?: string
+    announcementText?: string
+  }>({
+    defaultCourier: 'Blue Dart Express',
+    flatFee: 99,
+    freeThreshold: 1999,
+    estimatedDelivery: '3–5 Business Days',
+    codAdvanceAmount: 200,
+    supportPhone: '+91 9625923308',
+    supportEmail: 'orders@anjuclothing.com',
+    announcementText: '✦ Complimentary Express Shipping on Orders Above ₹1,999 ✦',
+  })
+
+  const refreshShippingSettings = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:4000'}/api/settings/shipping`)
+      if (res.ok) {
+        const data = await res.json()
+        setShippingSettings(data)
+      }
+    } catch (err) {
+      console.warn('Using default shipping settings:', err)
+    }
+  }
+
+  useEffect(() => {
+    refreshShippingSettings()
+  }, [])
 
   useEffect(() => {
     try {
@@ -377,6 +426,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         quickViewProduct,
         setQuickViewProduct,
         selectedProduct,
+        shippingSettings,
+        refreshShippingSettings,
       }}
     >
       {children}

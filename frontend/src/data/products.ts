@@ -576,7 +576,7 @@ export const REVIEWS: Review[] = [
 ]
 
 export const TRUST_ITEMS: TrustItem[] = [
-  { icon: '🚚', label: 'Free Shipping', sub: 'On orders above ₹1,499' },
+  { icon: '🚚', label: 'Free Shipping', sub: 'On all online prepaid orders' },
   { icon: '↩️', label: 'Easy 7-Day Returns', sub: 'Hassle-free exchanges' },
   { icon: '🔒', label: '100% Secure Payments', sub: 'UPI, Card, NetBanking & COD' },
   { icon: '🧵', label: 'Handcrafted Quality', sub: 'Premium fabrics & handwork' },
@@ -588,6 +588,10 @@ export const FAQS = [
     a: 'Orders are dispatched within 24-48 hours. Delivery takes 3-5 business days across metro cities and 5-7 business days for rest of India.',
   },
   {
+    q: 'What is your shipping policy?',
+    a: 'We offer 100% FREE Express Shipping on all online prepaid orders (UPI/Card/NetBanking). For Cash on Delivery (COD) orders, an extra ₹200 booking fee is paid online to confirm dispatch, and the actual dress price is paid during delivery.',
+  },
+  {
     q: 'Can I place an order directly on WhatsApp?',
     a: 'Yes! You can click any "Order via WhatsApp" button or message us directly at +91 9625923308 with screenshots of your chosen outfits.',
   },
@@ -597,7 +601,7 @@ export const FAQS = [
   },
   {
     q: 'Do you offer Cash on Delivery (COD)?',
-    a: 'Yes, Cash on Delivery is available across most pincodes in India for orders under ₹5,000.',
+    a: 'Yes, Cash on Delivery is available across India with an extra online booking fee of ₹200. The actual dress amount is collected upon delivery at your doorstep.',
   },
   {
     q: 'How do I choose the right size?',
