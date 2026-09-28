@@ -69,6 +69,45 @@ export async function fetchNewArrivals(limit = 8): Promise<Product[]> {
   return data.products.map(mapApiProduct)
 }
 
+export interface ApiCategory {
+  name: string
+  slug: string
+  itemCount: number
+  imageUrl: string
+}
+
+export async function fetchCategories(): Promise<ApiCategory[]> {
+  const res = await fetch(`${API_URL}/api/categories`)
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  const data: { categories: ApiCategory[] } = await res.json()
+  return data.categories || []
+}
+
+export function useCategories() {
+  const [categories, setCategories] = useState<ApiCategory[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchCategories()
+      .then((cats) => {
+        if (!cancelled) setCategories(cats)
+      })
+      .catch((err) => {
+        console.error('Error loading categories:', err)
+        if (!cancelled) setCategories([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { categories, loading }
+}
+
 export function useNewArrivals(limit = 8) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -378,6 +417,7 @@ export interface Order {
   trackingNumber?: string
   estimatedDelivery?: string
   timeline: OrderTimelineEvent[]
+  notes?: string
   createdAt: string
   updatedAt?: string
 }

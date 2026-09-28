@@ -71,7 +71,10 @@ adminProductsRouter.get('/', async (req: Request, res: Response) => {
  * Single product detail for editing.
  */
 adminProductsRouter.get('/:idOrHandle', async (req: Request, res: Response) => {
-  const { idOrHandle } = req.params
+  const idOrHandle = Array.isArray(req.params.idOrHandle) ? req.params.idOrHandle[0] : req.params.idOrHandle
+  if (!idOrHandle) {
+    return res.status(400).json({ error: 'Product ID or handle is required' })
+  }
   const isNumeric = /^\d+$/.test(idOrHandle)
 
   try {

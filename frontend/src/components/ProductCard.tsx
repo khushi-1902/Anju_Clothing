@@ -48,7 +48,7 @@ export function ProductCard({ product, className = '' }: ProductCardProps) {
       className={`group relative bg-transparent flex flex-col transition-all duration-300 cursor-pointer ${className}`}
     >
       {/* 1. Dress Image Card Container with Rounded Corners (Tall Portrait 2:3 ratio to display dress) */}
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] aspect-[2/3] w-full border border-stone-200/60 shadow-xs group-hover:shadow-lg group-hover:border-stone-300/60 transition-all duration-300">
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] aspect-[2/3] w-full border border-[#ebd5be] shadow-[0_8px_24px_rgba(196,147,50,0.22),0_2px_8px_rgba(196,147,50,0.14)] group-hover:shadow-[0_16px_38px_rgba(196,147,50,0.38),0_4px_14px_rgba(196,147,50,0.2)] group-hover:border-[#c9973a] transition-all duration-300 transform group-hover:-translate-y-1.5">
 
         {/* Crisp Dress Photo — gentle zoom on hover for a more premium feel */}
         <div className="absolute inset-0 [&_img]:h-full [&_img]:w-full [&_img]:object-cover [&_img]:transition-transform [&_img]:duration-500 group-hover:[&_img]:scale-[1.06]">

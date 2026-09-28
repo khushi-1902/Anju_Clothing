@@ -66,8 +66,12 @@ adminUsersRouter.get('/', async (req: Request, res: Response) => {
  * Updates a user's role (CUSTOMER <-> ADMIN).
  */
 adminUsersRouter.patch('/:identifier/role', async (req: Request, res: Response) => {
-  const { identifier } = req.params
+  const identifier = Array.isArray(req.params.identifier) ? req.params.identifier[0] : req.params.identifier
   const { role } = req.body
+
+  if (!identifier) {
+    return res.status(400).json({ error: 'User identifier is required' })
+  }
 
   if (role !== 'CUSTOMER' && role !== 'ADMIN') {
     return res.status(400).json({ error: "Role must be 'CUSTOMER' or 'ADMIN'" })

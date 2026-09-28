@@ -47,6 +47,7 @@ export interface AdminOrder {
   courierName?: string
   trackingNumber?: string
   estimatedDelivery?: string
+  notes?: string
   timeline?: {
     status: string
     time: string

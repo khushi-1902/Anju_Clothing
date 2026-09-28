@@ -110,8 +110,8 @@ export function OrderDetailModal({
     ? JSON.parse(order.items)
     : []
 
-  // Parse shipping address safely
-  const address = order.shippingAddress || {}
+  // Shipping address
+  const address = order.shippingAddress
 
   // Parse timeline safely
   const timeline = Array.isArray(order.timeline)
@@ -359,7 +359,7 @@ export function OrderDetailModal({
                   <div className="pt-2 border-t border-gray-100">
                     <span className="text-gray-400 text-[10px] uppercase font-bold">Shipping Address</span>
                     <p className="text-xs text-charcoal mt-1 leading-relaxed">
-                      {address.street ? (
+                      {address?.street ? (
                         <>
                           {address.street}<br />
                           {address.city}, {address.state} - <strong className="font-mono">{address.pincode}</strong><br />
@@ -376,13 +376,13 @@ export function OrderDetailModal({
                     <span className="font-bold text-charcoal">{order.paymentMethod || 'Online / Card / UPI'}</span>
                   </div>
 
-                  {(order as any).notes && (
+                  {order.notes && (
                     <div className="pt-2 border-t border-gray-100">
                       <span className="text-amber-800 text-[10px] uppercase font-bold flex items-center gap-1">
                         <span>📝</span> Payment & Order Notes
                       </span>
                       <p className="text-xs text-amber-950 font-medium bg-amber-50 p-2 rounded mt-1 border border-amber-200">
-                        {(order as any).notes}
+                        {order.notes}
                       </p>
                     </div>
                   )}

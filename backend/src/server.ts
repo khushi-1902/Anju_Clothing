@@ -249,6 +249,43 @@ app.get('/api/products/sale', handleSaleProducts)
 app.get('/api/products/mega-sale', handleSaleProducts)
 
 /**
+ * GET /api/categories
+ * Returns list of distinct categories with representative image, item count, and slug.
+ */
+app.get('/api/categories', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         p.category AS name,
+         LOWER(REGEXP_REPLACE(REGEXP_REPLACE(p.category, '[&]', 'and', 'g'), '[^a-zA-Z0-9]+', '-', 'g')) AS slug,
+         COUNT(p.id)::int AS "itemCount",
+         COALESCE(
+           (
+             SELECT i.url
+             FROM product_images i
+             JOIN products p2 ON p2.id = i."productId"
+             WHERE p2.category = p.category AND i.url IS NOT NULL AND i.url != ''
+             ORDER BY p2."isBestseller" DESC, p2."isNewArrival" DESC, i.position ASC
+             LIMIT 1
+           ),
+           ''
+         ) AS "imageUrl"
+       FROM products p
+       WHERE p.category IS NOT NULL AND TRIM(p.category) != ''
+       GROUP BY p.category
+       ORDER BY "itemCount" DESC, p.category ASC`
+    )
+
+    res.set('Cache-Control', 'public, max-age=300')
+    res.json({ categories: rows })
+  } catch (err) {
+    console.error('Error in /api/categories:', err)
+    res.status(500).json({ error: 'Could not load categories' })
+  }
+})
+
+
+/**
  * GET /api/products
  * Paginated list of products with filtering, search, and sorting.
  * Query params:

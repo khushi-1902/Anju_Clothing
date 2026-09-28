@@ -2,9 +2,9 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-display: 'Tenor Sans', 'Playfair Display', Georgia, serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 
   --color-ivory: #faf7f2;
   --color-cream: #f5efe6;
