@@ -1,0 +1,86 @@
+[
+  {
+    "id": "column.public.orders.amountDueOnDelivery",
+    "label": "Add column \"amountDueOnDelivery\" to \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "amountDueOnDelivery",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"amountDueOnDelivery\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orders",
+          "amountDueOnDelivery"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"amountDueOnDelivery\"",
+        "sql": "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"amountDueOnDelivery\" int4 DEFAULT 0 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"amountDueOnDelivery\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orders",
+          "amountDueOnDelivery"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orders.amountPayableNow",
+    "label": "Add column \"amountPayableNow\" to \"orders\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "amountPayableNow",
+        "table": "orders"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"amountPayableNow\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orders",
+          "amountPayableNow"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"amountPayableNow\"",
+        "sql": "ALTER TABLE \"public\".\"orders\" ADD COLUMN \"amountPayableNow\" int4 DEFAULT 0 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"amountPayableNow\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orders",
+          "amountPayableNow"
+        ]
+      }
+    ]
+  }
+]

@@ -1,68 +1,158 @@
-model Product {
-  id              Int              @id @default(autoincrement())
-  handle          String           @unique
-  name            String
+// use prisma-8
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
+
+model Users {
+  id           Int          @id(map: "users_pkey") @default(autoincrement())
+  clerkUserId  String       @unique(map: "users_clerkUserId_key")
+  email        String       @unique(map: "users_email_key")
+  name         String?
+  imageUrl     String?
+  role         String       @default("CUSTOMER")
+  createdAt    Timestamptz? @default(now())
+  updatedAt    Timestamptz? @default(now())
+  clerkUserId2 String?      @unique(map: "users_clerk_user_id_key") @map("clerk_user_id")
+  createdAt2   Timestamptz? @default(now()) @map("created_at")
+  updatedAt2   Timestamptz? @default(now()) @map("updated_at")
+  orders       Orders[]
+
+  @@index([clerkUserId2], map: "idx_users_clerk_id")
+  @@index([clerkUserId], map: "idx_users_clerk_user_id")
+  @@index([email], map: "idx_users_email")
+  @@map("users")
+}
+
+model Orders {
+  id                  Int          @id(map: "orders_pkey") @default(autoincrement())
+  orderNumber         String       @unique(map: "orders_orderNumber_key")
+  clerkUserId         String?
+  customerName        String
+  customerEmail       String
+  customerPhone       String
+  shippingAddress     Jsonb
+  items               Jsonb
+  subtotal            Int
+  shippingFee         Int          @default(0)
+  discountAmount      Int          @default(0)
+  totalAmount         Int
+  paymentMethod       String       @default("COD")
+  paymentStatus       String       @default("Pending")
+  orderStatus         String       @default("Confirmed")
+  courierName         String?      @default("BlueDart Express")
+  trackingNumber      String?
+  estimatedDelivery   String?
+  timeline            Jsonb        @default(dbgenerated("'[]'::jsonb"))
+  notes               String?
+  createdAt           Timestamptz? @default(now())
+  updatedAt           Timestamptz? @default(now())
+  razorpayOrderId     String?      @unique(map: "orders_razorpayOrderId_key")
+  razorpayPaymentId   String?
+  userId              Int?
+  amountPayableNow    Int          @default(0)
+  amountDueOnDelivery Int          @default(0)
+  orderItems          OrderItems[]
+  user                Users?       @relation(fields: [userId], references: [id], map: "orders_userId_fkey", index: false)
+
+  @@index([customerEmail], map: "idx_orders_email")
+  @@index([orderNumber], map: "idx_orders_order_number")
+  @@index([razorpayOrderId], map: "idx_orders_razorpay_order_id")
+  @@index([clerkUserId], map: "idx_orders_user_id")
+  @@map("orders")
+}
+
+model Products {
+  id              Int               @id(map: "products_pkey") @default(autoincrement())
+  category        String?
+  comparePrice    Int?
+  createdAt       Timestamptz       @default(now())
   descriptionHtml String?
   fabric          String?
-  work            String?
-  category        String?
+  handle          String            @unique(map: "products_handle_key")
+  isBestseller    Boolean           @default(false)
+  isNewArrival    Boolean           @default(false)
+  isSale          Boolean           @default(false)
+  name            String
   price           Int
-  comparePrice    Int?
-  isNewArrival    Boolean          @default(false)
-  isBestseller    Boolean          @default(false)
-  isSale          Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  variants        ProductVariant[]
-  images          ProductImage[]
+  work            String?
+  orderItems      OrderItems[]
+  productImages   ProductImages[]
+  productReviews  ProductReviews[]
+  productVariants ProductVariants[]
 
-  @@index([isBestseller, createdAt])
-  @@index([isSale, createdAt])
+  @@index([isBestseller, createdAt], map: "idx_products_bestseller_created")
+  @@index([isSale, createdAt], map: "idx_products_sale_created")
   @@map("products")
 }
 
-model ProductVariant {
-  id             Int     @id @default(autoincrement())
-  sku            String?
-  size           String?
+model ProductVariants {
+  id             Int          @id(map: "product_variants_pkey") @default(autoincrement())
   color          String?
-  price          Int
   compareAtPrice Int?
-  stock          Int     @default(0)
   imageUrl       String?
+  price          Int
   productId      Int
-  product        Product @relation(fields: [productId], references: [id])
+  size           String?
+  sku            String?
+  stock          Int          @default(0)
+  orderItems     OrderItems[]
+  product        Products     @relation(fields: [productId], references: [id], map: "product_variants_productId_fkey")
 
-  @@index([productId])
+  @@index([productId], name: "product_variants_productId_idx")
   @@map("product_variants")
 }
 
-model ProductImage {
-  id        Int     @id @default(autoincrement())
-  url       String
-  position  Int     @default(1)
-  alt       String?
-  productId Int
-  product   Product @relation(fields: [productId], references: [id])
+model OrderItems {
+  id               Int              @id(map: "order_items_pkey") @default(autoincrement())
+  orderId          Int
+  productId        Int?
+  productVariantId Int?
+  name             String
+  price            Int
+  quantity         Int
+  size             String?
+  color            String?
+  imageUrl         String?
+  order            Orders           @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "order_items_orderId_fkey")
+  product          Products?        @relation(fields: [productId], references: [id], map: "order_items_productId_fkey", index: false)
+  productVariant   ProductVariants? @relation(fields: [productVariantId], references: [id], map: "order_items_productVariantId_fkey", index: false)
 
-  @@index([productId])
+  @@index([orderId], map: "idx_order_items_order_id")
+  @@map("order_items")
+}
+
+model ProductImages {
+  id        Int      @id(map: "product_images_pkey") @default(autoincrement())
+  alt       String?
+  position  Int      @default(1)
+  productId Int
+  url       String
+  product   Products @relation(fields: [productId], references: [id], map: "product_images_productId_fkey")
+
+  @@index([productId], name: "product_images_productId_idx")
   @@map("product_images")
 }
 
-enum Role {
-  CUSTOMER
-  ADMIN
+model ProductReviews {
+  id           Int          @id(map: "product_reviews_pkey") @default(autoincrement())
+  productId    Int
+  name         String
+  rating       Int
+  title        String?
+  comment      String
+  verified     Boolean?     @default(true)
+  helpfulCount Int?         @default(0)
+  createdAt    Timestamptz? @default(now())
+  product      Products     @relation(fields: [productId], references: [id], onDelete: Cascade, map: "product_reviews_productId_fkey", index: false)
+
+  @@index([productId, createdAt], map: "idx_product_reviews_product_id")
+  @@check(expression: "((rating >= 1) AND (rating <= 5))", map: "product_reviews_rating_check")
+  @@map("product_reviews")
 }
 
-model User {
-  id          Int      @id @default(autoincrement())
-  clerkUserId String   @unique @map("clerk_user_id")
-  email       String   @unique
-  name        String?
-  role        Role     @default(CUSTOMER)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+model StoreSettings {
+  key         String       @id(map: "store_settings_pkey")
+  value       String
+  description String?
+  updatedAt   Timestamptz? @default(now()) @map("updated_at")
 
-  @@index([clerkUserId])
-  @@index([email])
-  @@map("users")
+  @@map("store_settings")
 }

@@ -8,7 +8,7 @@ import { ReviewsSection } from '../components/ReviewsSection'
 
 export function HomePage() {
   return (
-    <div className="space-y-0">
+    <div className="homepage-root space-y-0">
       {/* 1. Hero Section */}
       <Hero />
 

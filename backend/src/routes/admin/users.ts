@@ -30,26 +30,26 @@ adminUsersRouter.get('/', async (req: Request, res: Response) => {
     const { rows } = await pool.query(
       `SELECT 
          u.id, 
-         COALESCE(u."clerkUserId", u.clerk_user_id) AS "clerkUserId", 
+         u."clerkUserId", 
          u.email, 
          u.name, 
          u.role, 
-         COALESCE(u."createdAt", u.created_at, NOW()) AS "createdAt",
+         COALESCE(u."createdAt", NOW()) AS "createdAt",
          COALESCE((
            SELECT COUNT(*)::int 
            FROM orders o 
-           WHERE (o."clerkUserId" IS NOT NULL AND o."clerkUserId" = COALESCE(u."clerkUserId", u.clerk_user_id))
+           WHERE (o."clerkUserId" IS NOT NULL AND o."clerkUserId" = u."clerkUserId")
               OR (o."customerEmail" IS NOT NULL AND LOWER(o."customerEmail") = LOWER(u.email))
          ), 0) AS "orderCount",
          COALESCE((
            SELECT SUM("totalAmount")::int 
            FROM orders o 
-           WHERE (o."clerkUserId" IS NOT NULL AND o."clerkUserId" = COALESCE(u."clerkUserId", u.clerk_user_id))
+           WHERE (o."clerkUserId" IS NOT NULL AND o."clerkUserId" = u."clerkUserId")
               OR (o."customerEmail" IS NOT NULL AND LOWER(o."customerEmail") = LOWER(u.email))
          ), 0) AS "totalSpent"
        FROM users u
        ${whereString}
-       ORDER BY COALESCE(u."createdAt", u.created_at) DESC
+       ORDER BY u."createdAt" DESC
        LIMIT 200`,
       params
     )
@@ -83,8 +83,8 @@ adminUsersRouter.patch('/:identifier/role', async (req: Request, res: Response) 
     const { rows } = await pool.query(
       `UPDATE users
        SET role = $1, "updatedAt" = NOW()
-       WHERE ${isNumeric ? 'id = $2' : '("clerkUserId" = $2 OR clerk_user_id = $2 OR email ILIKE $2)'}
-       RETURNING id, COALESCE("clerkUserId", clerk_user_id) AS "clerkUserId", email, name, role`,
+       WHERE ${isNumeric ? 'id = $2' : '("clerkUserId" = $2 OR email ILIKE $2)'}
+       RETURNING id, "clerkUserId", email, name, role`,
       [role, isNumeric ? Number(identifier) : identifier]
     )
 

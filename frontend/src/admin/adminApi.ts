@@ -41,6 +41,8 @@ export interface AdminOrder {
   shippingFee: number
   discountAmount: number
   totalAmount: number
+  amountPayableNow?: number
+  amountDueOnDelivery?: number
   paymentMethod: string
   paymentStatus: string
   orderStatus: string
@@ -48,6 +50,8 @@ export interface AdminOrder {
   trackingNumber?: string
   estimatedDelivery?: string
   notes?: string
+  razorpayOrderId?: string | null
+  razorpayPaymentId?: string | null
   timeline?: {
     status: string
     time: string
@@ -271,6 +275,32 @@ export async function updateOrderStatus(
 
   const data = await res.json()
   return data.order
+}
+
+/**
+ * Initiates Razorpay refund for an order via backend.
+ */
+export async function refundAdminOrder(
+  token: string,
+  orderNumber: string,
+  amountInRupees?: number,
+  reason?: string
+): Promise<{ success: boolean; message: string; refundId: string; order: AdminOrder }> {
+  const res = await fetch(`${API_URL}/api/payments/refund`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ orderNumber, amountInRupees, reason }),
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.error || `Refund failed: HTTP ${res.status}`)
+  }
+
+  return await res.json()
 }
 
 /**

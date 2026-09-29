@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'37663cdcf2e51f123bbb69b7cc6d65d36f8911d350b873a9d68885eff72a087e'>;
+  StorageHashBase<'c17c8200d9429fc3872301bc5888560f21bea44cb8ce0113b9175a08fa5e9df9'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -279,8 +279,6 @@ export type FieldOutputTypes = {
       readonly razorpayOrderId: CodecTypes['pg/text@1']['output'] | null;
       readonly razorpayPaymentId: CodecTypes['pg/text@1']['output'] | null;
       readonly userId: CodecTypes['pg/int4@1']['output'] | null;
-      readonly amountPayableNow: CodecTypes['pg/int4@1']['output'];
-      readonly amountDueOnDelivery: CodecTypes['pg/int4@1']['output'];
     };
     readonly ProductImages: {
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -387,8 +385,6 @@ export type FieldInputTypes = {
       readonly razorpayOrderId: CodecTypes['pg/text@1']['input'] | null;
       readonly razorpayPaymentId: CodecTypes['pg/text@1']['input'] | null;
       readonly userId: CodecTypes['pg/int4@1']['input'] | null;
-      readonly amountPayableNow: CodecTypes['pg/int4@1']['input'];
-      readonly amountDueOnDelivery: CodecTypes['pg/int4@1']['input'];
     };
     readonly ProductImages: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -470,8 +466,6 @@ export type StorageColumnTypes = {
       readonly size: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly orders: {
-      readonly amountDueOnDelivery: CodecTypes['pg/int4@1']['output'];
-      readonly amountPayableNow: CodecTypes['pg/int4@1']['output'];
       readonly clerkUserId: CodecTypes['pg/text@1']['output'] | null;
       readonly courierName: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
@@ -578,8 +572,6 @@ export type StorageColumnInputTypes = {
       readonly size: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly orders: {
-      readonly amountDueOnDelivery: CodecTypes['pg/int4@1']['input'];
-      readonly amountPayableNow: CodecTypes['pg/int4@1']['input'];
       readonly clerkUserId: CodecTypes['pg/text@1']['input'] | null;
       readonly courierName: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
@@ -714,8 +706,6 @@ export namespace Models {
     razorpayOrderId: CodecTypes['pg/text@1']['output'] | null;
     razorpayPaymentId: CodecTypes['pg/text@1']['output'] | null;
     userId: CodecTypes['pg/int4@1']['output'] | null;
-    amountPayableNow: CodecTypes['pg/int4@1']['output'];
-    amountDueOnDelivery: CodecTypes['pg/int4@1']['output'];
     orderItems: public_OrderItems[];
     user: public_Users | null;
     readonly [RelationKeys]?: 'orderItems' | 'user';
@@ -1100,24 +1090,6 @@ type ContractBase = Omit<
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
-                };
-                readonly amountPayableNow: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
-                  };
-                };
-                readonly amountDueOnDelivery: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
-                  };
                 };
               };
               primaryKey: { readonly columns: readonly ['id']; readonly name: 'orders_pkey' };
@@ -1889,14 +1861,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
-              readonly amountPayableNow: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly amountDueOnDelivery: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
             };
             readonly relations: {
               readonly orderItems: {
@@ -1952,8 +1916,6 @@ type ContractBase = Omit<
                 readonly razorpayOrderId: { readonly column: 'razorpayOrderId' };
                 readonly razorpayPaymentId: { readonly column: 'razorpayPaymentId' };
                 readonly userId: { readonly column: 'userId' };
-                readonly amountPayableNow: { readonly column: 'amountPayableNow' };
-                readonly amountDueOnDelivery: { readonly column: 'amountDueOnDelivery' };
               };
             };
           };

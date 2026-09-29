@@ -2,12 +2,16 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import compression from 'compression'
+import { getAuth } from '@clerk/express'
 import { pool } from './db'
 import { clerkAuth, requireLogin, requireAdmin } from './middleware/auth'
 import { clerkWebhookRouter } from './routes/webhooks/clerk'
+import { razorpayWebhookRouter } from './routes/webhooks/razorpay'
 import { adminRouter } from './routes/admin'
 import { publicSettingsRouter } from './routes/settings'
+import { paymentsRouter } from './routes/payments'
 import { initSettingsTable } from './initSettingsTable'
+import { COD_SHIPPING_FEE } from './config/pricing'
 
 // Initialize settings table in PostgreSQL on boot
 initSettingsTable().catch((err) => console.error('Settings init error:', err))
@@ -18,8 +22,9 @@ const PORT = Number(process.env.PORT ?? 4000)
 app.use(compression())
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173' }))
 
-// 1. Clerk Webhook MUST be mounted before global express.json() for Svix raw buffer verification
+// 1. Webhooks MUST be mounted before global express.json() for raw buffer cryptographic verification
 app.use('/api/webhooks/clerk', clerkWebhookRouter)
+app.use('/api/webhooks/razorpay', razorpayWebhookRouter)
 
 // 2. Standard JSON body parsing & Clerk session middleware
 app.use(express.json())
@@ -31,10 +36,14 @@ app.use('/api/settings', publicSettingsRouter)
 // 4. Admin Protected Routes Group
 app.use('/api/admin', requireLogin, requireAdmin, adminRouter)
 
+// 5. Razorpay Payments Route Group
+app.use('/api/payments', paymentsRouter)
+
 // 4. Authenticated User Profile & Role Check (for Frontend Route Guards)
 app.get('/api/auth/me', requireLogin, async (req, res) => {
   try {
-    const clerkUserId = (req as any).auth?.userId
+    const auth = getAuth(req)
+    const clerkUserId = auth?.userId
     if (!clerkUserId) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
@@ -45,9 +54,9 @@ app.get('/api/auth/me', requireLogin, async (req, res) => {
       .filter(Boolean)
 
     let { rows } = await pool.query(
-      `SELECT id, COALESCE("clerkUserId", clerk_user_id) AS "clerkUserId", email, name, role 
+      `SELECT id, "clerkUserId", email, name, role 
        FROM users 
-       WHERE ("clerkUserId" = $1 OR clerk_user_id = $1) 
+       WHERE "clerkUserId" = $1 
        LIMIT 1`,
       [clerkUserId]
     )
@@ -68,8 +77,8 @@ app.get('/api/auth/me', requireLogin, async (req, res) => {
         const role = shouldBeAdmin ? 'ADMIN' : (user?.role || 'CUSTOMER')
 
         const upsertRes = await pool.query(
-          `INSERT INTO users ("clerkUserId", clerk_user_id, email, name, role, "updatedAt", updated_at)
-           VALUES ($1, $1, $2, $3, $4, NOW(), NOW())
+          `INSERT INTO users ("clerkUserId", email, name, role, "updatedAt")
+           VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT ("clerkUserId") 
            DO UPDATE SET 
              email = EXCLUDED.email, 
@@ -565,6 +574,25 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders ("clerkUserId");
       CREATE INDEX IF NOT EXISTS idx_orders_email ON orders ("customerEmail");
       CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders ("orderNumber");
+
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS "razorpayOrderId" TEXT UNIQUE;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS "razorpayPaymentId" TEXT;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS "userId" INT REFERENCES users(id);
+
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        "orderId" INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        "productId" INT REFERENCES products(id),
+        "productVariantId" INT REFERENCES product_variants(id),
+        name TEXT NOT NULL,
+        price INT NOT NULL,
+        quantity INT NOT NULL,
+        size TEXT,
+        color TEXT,
+        "imageUrl" TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items ("orderId");
+      CREATE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON orders ("razorpayOrderId");
     `)
 
     // Seed sample orders if none exist
@@ -713,90 +741,341 @@ async function seedSampleOrders() {
 }
 
 /**
- * POST /api/orders
- * Place a new order
+ * Helper to generate unique order reference codes.
+ * e.g. AC-M1A2B3-7849
  */
-app.post('/api/orders', async (req, res) => {
+function generateOrderNumber(): string {
+  const timestampPart = Date.now().toString(36).toUpperCase()
+  const randomPart = Math.floor(1000 + Math.random() * 9000)
+  return `AC-${timestampPart}-${randomPart}`
+}
+
+/**
+ * POST /api/orders
+ * Secure order placement endpoint:
+ * - Requires authenticated Clerk session (clerkUserId extracted strictly from getAuth(req).userId).
+ * - Accepts only items [{ productVariantId, quantity }], paymentMethod ("PREPAID" | "COD"), and customer/shipping address.
+ * - Computes all prices, subtotal, shippingFee, discountAmount, totalAmount, amountPayableNow, and amountDueOnDelivery strictly on the server from the database.
+ * - Verifies variant existence and checks stock >= quantity.
+ * - Executes in a single database transaction (inserts orders and order_items rows, rolls back on any error).
+ * - Retries orderNumber generation up to 3 times on unique constraint collision.
+ */
+app.post('/api/orders', requireLogin, async (req, res) => {
+  const auth = getAuth(req)
+  const clerkUserId = auth?.userId
+
+  if (!clerkUserId) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required to place an order.' })
+  }
+
   const {
-    clerkUserId,
+    items,
+    paymentMethod,
     customerName,
     customerEmail,
     customerPhone,
     shippingAddress,
-    items,
-    subtotal,
-    shippingFee = 0,
-    discountAmount = 0,
-    totalAmount,
-    paymentMethod = 'COD',
-    paymentStatus,
-    courierName,
-    estimatedDelivery,
     notes,
   } = req.body
 
-  if (!customerName || !customerEmail || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'Missing required order details' })
+  // 1. Validate customer information
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  const indianPhoneRegex = /^(?:\+91[\-\s]?)?[6-9]\d{9}$/
+  const pincodeRegex = /^\d{6}$/
+
+  if (
+    !customerName ||
+    typeof customerName !== 'string' ||
+    customerName.trim().length < 2 ||
+    customerName.trim().length > 100
+  ) {
+    return res.status(400).json({ error: 'Customer name is required (2-100 characters).' })
   }
 
-  const randomNum = Math.floor(10000 + Math.random() * 90000)
-  const orderNumber = `AC-${randomNum}`
-  const trackingNumber = `BLUEDART-${Math.floor(10000000 + Math.random() * 90000000)}`
+  if (
+    !customerEmail ||
+    typeof customerEmail !== 'string' ||
+    !emailRegex.test(customerEmail.trim()) ||
+    customerEmail.trim().length > 255
+  ) {
+    return res.status(400).json({ error: 'A valid email address is required (max 255 characters).' })
+  }
 
-  const dateNow = new Date()
-  const formattedDate = dateNow.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  if (
+    !customerPhone ||
+    typeof customerPhone !== 'string' ||
+    !indianPhoneRegex.test(customerPhone.trim()) ||
+    customerPhone.trim().length > 20
+  ) {
+    return res.status(400).json({
+      error: 'A valid 10-digit Indian mobile number is required (e.g. 9876543210 or +919876543210).',
+    })
+  }
 
-  const timeline = [
-    { status: 'Order Placed', time: formattedDate, completed: true, description: 'Order received and confirmed by Anju Clothing boutique.' },
-    { status: 'Quality Inspection & Packaging', time: 'In Progress', completed: false, description: 'Handcrafted inspection and luxury packaging.' },
-    { status: 'Dispatched / In Transit', time: 'Upcoming', completed: false, description: `Express delivery handoff to ${courierName || 'Blue Dart Express'}.` },
-    { status: 'Out for Delivery', time: 'Upcoming', completed: false, description: 'Courier agent arrives at your doorstep.' },
-    { status: 'Delivered', time: 'Upcoming', completed: false, description: 'Package safely delivered.' },
-  ]
+  // 2. Validate and whitelist shippingAddress fields
+  if (!shippingAddress || typeof shippingAddress !== 'object') {
+    return res.status(400).json({ error: 'Shipping address is required.' })
+  }
 
+  const street = typeof shippingAddress.street === 'string' ? shippingAddress.street.trim() : ''
+  const city = typeof shippingAddress.city === 'string' ? shippingAddress.city.trim() : ''
+  const state = typeof shippingAddress.state === 'string' && shippingAddress.state.trim() ? shippingAddress.state.trim() : 'India'
+  const pincode = typeof shippingAddress.pincode === 'string' ? shippingAddress.pincode.trim() : ''
+  const country = typeof shippingAddress.country === 'string' && shippingAddress.country.trim() ? shippingAddress.country.trim() : 'India'
+
+  if (!street || street.length < 3 || street.length > 200) {
+    return res.status(400).json({ error: 'Street address is required (3-200 characters).' })
+  }
+  if (!city || city.length < 2 || city.length > 100) {
+    return res.status(400).json({ error: 'City is required (2-100 characters).' })
+  }
+  if (!pincode || !pincodeRegex.test(pincode)) {
+    return res.status(400).json({ error: 'A valid 6-digit Indian PIN code is required (e.g. 400053).' })
+  }
+
+  const sanitizedShippingAddress = {
+    street: street.slice(0, 200),
+    city: city.slice(0, 100),
+    state: state.slice(0, 100),
+    pincode: pincode.slice(0, 6),
+    country: country.slice(0, 50),
+  }
+
+  // 3. Validate paymentMethod ("PREPAID" or "COD" only)
+  const normalizedPaymentMethod = String(paymentMethod || '').trim().toUpperCase()
+  if (normalizedPaymentMethod !== 'PREPAID' && normalizedPaymentMethod !== 'COD') {
+    return res.status(400).json({
+      error: 'Invalid paymentMethod. Must be strictly "PREPAID" or "COD".',
+    })
+  }
+
+  // 4. Validate items array
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Order items must be a non-empty array.' })
+  }
+
+  const variantIds = items.map((i: any) => Number(i?.productVariantId))
+  if (variantIds.some((id) => !id || !Number.isInteger(id) || id <= 0)) {
+    return res.status(400).json({
+      error: 'Each item must have a valid positive integer productVariantId.',
+    })
+  }
+
+  // Check for duplicate variant IDs in the same order
+  const uniqueIds = new Set(variantIds)
+  if (uniqueIds.size !== variantIds.length) {
+    return res.status(400).json({
+      error: 'Duplicate productVariantId detected in items. Combine quantities into a single item.',
+    })
+  }
+
+  // Validate quantities (integers between 1 and 10)
+  for (const item of items) {
+    const qty = Number(item.quantity)
+    if (!Number.isInteger(qty) || qty < 1 || qty > 10) {
+      return res.status(400).json({
+        error: `Invalid quantity (${item.quantity}) for productVariantId ${item.productVariantId}. Must be an integer between 1 and 10.`,
+      })
+    }
+  }
+
+  // 5. Database Transaction: verify DB prices & stock, compute totals, and create order
+  const client = await pool.connect()
   try {
-    const finalPaymentStatus = paymentStatus || (paymentMethod === 'Online UPI / Card' ? 'Paid' : 'Pending')
+    await client.query('BEGIN')
 
-    const { rows } = await pool.query(
-      `INSERT INTO orders (
-        "orderNumber", "clerkUserId", "customerName", "customerEmail", "customerPhone",
-        "shippingAddress", items, subtotal, "shippingFee", "discountAmount", "totalAmount",
-        "paymentMethod", "paymentStatus", "orderStatus", "courierName", "trackingNumber",
-        "estimatedDelivery", timeline, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-      RETURNING *`,
-      [
-        orderNumber,
-        clerkUserId || null,
-        String(customerName).trim(),
-        String(customerEmail).trim().toLowerCase(),
-        String(customerPhone).trim(),
-        JSON.stringify(shippingAddress || {}),
-        JSON.stringify(items),
-        subtotal || 0,
-        shippingFee || 0,
-        discountAmount || 0,
-        totalAmount || subtotal || 0,
-        paymentMethod,
-        finalPaymentStatus,
-        'Confirmed',
-        courierName || 'Blue Dart Express',
-        trackingNumber,
-        estimatedDelivery || '3–5 Business Days',
-        JSON.stringify(timeline),
-        notes || null,
-      ]
+    // Lookup internal user id from users table using "clerkUserId" column
+    const userRes = await client.query(
+      `SELECT id FROM users WHERE "clerkUserId" = $1 LIMIT 1`,
+      [clerkUserId]
     )
+    const internalUserId = userRes.rows[0]?.id || null
 
-    res.status(201).json({ order: rows[0] })
-  } catch (err) {
-    console.error('Error creating order:', err)
-    res.status(500).json({ error: 'Could not process order' })
+    let subtotal = 0
+    const resolvedItems: Array<{
+      productId: number
+      productVariantId: number
+      name: string
+      price: number
+      quantity: number
+      size: string | null
+      color: string | null
+      imageUrl: string | null
+    }> = []
+
+    for (const item of items) {
+      const variantId = Number(item.productVariantId)
+      const quantity = Number(item.quantity)
+
+      // Query database for authoritative price, stock, and garment specs.
+      // Uses a correlated subquery for images to prevent any duplicate rows.
+      const variantRes = await client.query(
+        `SELECT 
+           pv.id AS "variantId", 
+           pv.price, 
+           pv.stock, 
+           pv.size, 
+           pv.color, 
+           COALESCE(
+             pv."imageUrl", 
+             (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id ORDER BY pi.position ASC LIMIT 1)
+           ) AS "imageUrl",
+           p.id AS "productId", 
+           p.name AS "productName"
+         FROM product_variants pv
+         JOIN products p ON pv."productId" = p.id
+         WHERE pv.id = $1`,
+        [variantId]
+      )
+
+      if (variantRes.rows.length === 0) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({
+          error: `Product variant with ID ${variantId} does not exist.`,
+        })
+      }
+
+      const variant = variantRes.rows[0]
+
+      // Stock availability check
+      if (variant.stock < quantity) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({
+          error: `Insufficient stock for "${variant.productName}" (${variant.size || 'Standard'}). Available: ${variant.stock}, requested: ${quantity}.`,
+        })
+      }
+
+      const itemPrice = Number(variant.price)
+      subtotal += itemPrice * quantity
+
+      resolvedItems.push({
+        productId: variant.productId,
+        productVariantId: variant.variantId,
+        name: variant.productName,
+        price: itemPrice,
+        quantity,
+        size: variant.size || null,
+        color: variant.color || null,
+        imageUrl: variant.imageUrl || null,
+      })
+    }
+
+    // 6. Server-side Financial Calculations based on Business Rules:
+    // PREPAID: shippingFee = 0, totalAmount = subtotal, amountPayableNow = subtotal, amountDueOnDelivery = 0.
+    // COD: shippingFee = 200, totalAmount = subtotal + 200, amountPayableNow = 200, amountDueOnDelivery = subtotal.
+    const isPrepaid = normalizedPaymentMethod === 'PREPAID'
+    const shippingFee = isPrepaid ? 0 : COD_SHIPPING_FEE
+    const discountAmount = 0
+    const totalAmount = subtotal + shippingFee
+    const amountPayableNow = isPrepaid ? subtotal : COD_SHIPPING_FEE
+    const amountDueOnDelivery = isPrepaid ? 0 : subtotal
+
+    const trackingNumber = `BLUEDART-${Math.floor(10000000 + Math.random() * 90000000)}`
+
+    const dateNow = new Date()
+    const formattedDate = dateNow.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    const timeline = [
+      { status: 'Order Placed', time: formattedDate, completed: true, description: 'Order created and awaiting payment confirmation.' },
+      { status: 'Quality Inspection & Packaging', time: 'Upcoming', completed: false, description: 'Handcrafted inspection and luxury packaging.' },
+      { status: 'Dispatched / In Transit', time: 'Upcoming', completed: false, description: 'Express courier dispatch.' },
+      { status: 'Out for Delivery', time: 'Upcoming', completed: false, description: 'Courier agent delivers package to doorstep.' },
+      { status: 'Delivered', time: 'Upcoming', completed: false, description: 'Package safely delivered.' },
+    ]
+
+    // 7. Insert Order Row with retry on orderNumber collision
+    let createdOrder: any = null
+    let attempts = 0
+    const maxAttempts = 3
+
+    while (attempts < maxAttempts && !createdOrder) {
+      attempts++
+      const orderNumber = generateOrderNumber()
+
+      try {
+        const orderInsertRes = await client.query(
+          `INSERT INTO orders (
+            "orderNumber", "clerkUserId", "userId", "customerName", "customerEmail", "customerPhone",
+            "shippingAddress", items, subtotal, "shippingFee", "discountAmount", "totalAmount",
+            "amountPayableNow", "amountDueOnDelivery", "paymentMethod", "paymentStatus", "orderStatus",
+            "courierName", "trackingNumber", "estimatedDelivery", timeline, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+          RETURNING *`,
+          [
+            orderNumber,
+            clerkUserId,
+            internalUserId,
+            customerName.trim(),
+            customerEmail.trim().toLowerCase(),
+            customerPhone.trim(),
+            JSON.stringify(sanitizedShippingAddress),
+            JSON.stringify(resolvedItems),
+            subtotal,
+            shippingFee,
+            discountAmount,
+            totalAmount,
+            amountPayableNow,
+            amountDueOnDelivery,
+            normalizedPaymentMethod,
+            'PENDING',
+            'PENDING',
+            'Blue Dart Express',
+            trackingNumber,
+            '3–5 Business Days',
+            JSON.stringify(timeline),
+            notes && typeof notes === 'string' ? notes.trim().slice(0, 500) : null,
+          ]
+        )
+        createdOrder = orderInsertRes.rows[0]
+      } catch (insertErr: any) {
+        if (insertErr.code === '23505' && attempts < maxAttempts) {
+          console.warn(`[POST /api/orders] orderNumber collision on attempt ${attempts}, retrying...`)
+          continue
+        }
+        throw insertErr
+      }
+    }
+
+    if (!createdOrder) {
+      throw new Error('Failed to generate a unique order number after multiple attempts.')
+    }
+
+    // 8. Insert into order_items relational table
+    for (const item of resolvedItems) {
+      await client.query(
+        `INSERT INTO order_items (
+          "orderId", "productId", "productVariantId", name, price, quantity, size, color, "imageUrl"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          createdOrder.id,
+          item.productId,
+          item.productVariantId,
+          item.name,
+          item.price,
+          item.quantity,
+          item.size,
+          item.color,
+          item.imageUrl,
+        ]
+      )
+    }
+
+    await client.query('COMMIT')
+
+    return res.status(201).json({
+      order: createdOrder,
+    })
+  } catch (err: any) {
+    await client.query('ROLLBACK')
+    console.error('[POST /api/orders] Transaction error:', err)
+    return res.status(500).json({ error: 'Internal server error while placing order.' })
+  } finally {
+    client.release()
   }
 })
 

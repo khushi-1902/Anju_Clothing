@@ -31,7 +31,7 @@ export function ContactUsPage() {
           <p className="text-gold text-xs uppercase tracking-[0.3em] font-semibold mb-2">
             Get In Touch
           </p>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-charcoal">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-charcoal">
             Contact Anju Clothings
           </h1>
           <p className="text-muted text-xs sm:text-sm mt-3 max-w-lg mx-auto">
@@ -47,7 +47,7 @@ export function ContactUsPage() {
             <div className="w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-2xl mb-4">
               💬
             </div>
-            <h3 className="font-display text-base font-bold text-charcoal mb-1">WhatsApp Chat</h3>
+            <h3 className="text-base font-bold text-charcoal mb-1">WhatsApp Chat</h3>
             <p className="text-xs text-muted mb-4">Instant support & custom orders</p>
             <a
               href={`https://wa.me/${STORE_INFO.phoneRaw}?text=Hi%20Anju%20Clothings,%20I%20have%20a%20question.`}
@@ -64,7 +64,7 @@ export function ContactUsPage() {
             <div className="w-12 h-12 rounded-full bg-olive/10 text-olive flex items-center justify-center text-2xl mb-4">
               📞
             </div>
-            <h3 className="font-display text-base font-bold text-charcoal mb-1">Call Support</h3>
+            <h3 className="text-base font-bold text-charcoal mb-1">Call Support</h3>
             <p className="text-xs text-muted mb-4">{STORE_INFO.hours}</p>
             <a href={`tel:${STORE_INFO.phoneRaw}`} className="text-xs font-bold text-olive hover:underline">
               {STORE_INFO.phone}
@@ -76,7 +76,7 @@ export function ContactUsPage() {
             <div className="w-12 h-12 rounded-full bg-gold/15 text-gold flex items-center justify-center text-2xl mb-4">
               ✉️
             </div>
-            <h3 className="font-display text-base font-bold text-charcoal mb-1">Email Inquiries</h3>
+            <h3 className="text-base font-bold text-charcoal mb-1">Email Inquiries</h3>
             <p className="text-xs text-muted mb-4">Response within 24 business hours</p>
             <a href={`mailto:${STORE_INFO.email}`} className="text-xs font-bold text-charcoal hover:text-olive">
               {STORE_INFO.email}
@@ -88,7 +88,7 @@ export function ContactUsPage() {
             <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">
               📍
             </div>
-            <h3 className="font-display text-base font-bold text-charcoal mb-1">Location</h3>
+            <h3 className="text-base font-bold text-charcoal mb-1">Location</h3>
             <p className="text-xs text-muted mb-4">{STORE_INFO.address}</p>
             <span className="text-xs font-semibold text-charcoal">Pan-India Express Delivery</span>
           </div>
@@ -99,7 +99,7 @@ export function ContactUsPage() {
           
           {/* Inquiry Form */}
           <div className="lg:col-span-7">
-            <h2 className="font-display text-2xl font-bold text-charcoal mb-2">Send Us a Message</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-charcoal mb-2">Send Us a Message</h2>
             <p className="text-xs text-muted mb-6">
               Fill out the form below and our styling consultant will get back to you promptly.
             </p>
@@ -107,7 +107,7 @@ export function ContactUsPage() {
             {submitted ? (
               <div className="bg-olive/10 border border-olive/30 p-6 text-center space-y-3">
                 <div className="text-3xl">✨</div>
-                <h3 className="font-display text-lg font-bold text-olive">Thank you for reaching out!</h3>
+                <h3 className="text-lg font-bold text-olive">Thank you for reaching out!</h3>
                 <p className="text-xs text-charcoal max-w-sm mx-auto">
                   We have received your message and will respond to you shortly via WhatsApp or Email.
                 </p>
@@ -181,7 +181,7 @@ export function ContactUsPage() {
           {/* Quick FAQ / WhatsApp callout */}
           <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-border/80 pt-8 lg:pt-0 lg:pl-10 flex flex-col justify-between">
             <div>
-              <h3 className="font-display text-xl font-bold text-charcoal mb-4">
+              <h3 className="text-xl font-bold tracking-tight text-charcoal mb-4">
                 Need Faster Assistance?
               </h3>
               <p className="text-xs text-muted leading-relaxed mb-6">
@@ -233,7 +233,7 @@ export function ContactUsPage() {
             <p className="text-gold text-xs uppercase tracking-[0.3em] font-semibold mb-2">
               Common Inquiries
             </p>
-            <h2 className="font-display text-3xl font-bold text-charcoal">
+            <h2 className="text-3xl font-bold tracking-tight text-charcoal">
               Frequently Asked Questions
             </h2>
             <p className="text-muted text-xs sm:text-sm mt-2">
@@ -250,7 +250,7 @@ export function ContactUsPage() {
                     onClick={() => toggleFaq(index)}
                     className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-ivory/50 transition-colors"
                   >
-                    <span className="font-display text-sm sm:text-base font-bold text-charcoal">
+                    <span className="text-sm sm:text-base font-bold text-charcoal">
                       {faq.q}
                     </span>
                     <span className="text-lg font-bold text-olive shrink-0">

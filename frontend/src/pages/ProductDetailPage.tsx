@@ -184,7 +184,7 @@ export function ProductDetailPage() {
   if (notFound || !product) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-ivory px-4 text-center">
-        <h1 className="font-display text-2xl font-bold text-charcoal">Product not found</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-charcoal">Product not found</h1>
         <p className="text-sm text-muted">This item may have sold out or the link is incorrect.</p>
       </div>
     )
@@ -610,7 +610,7 @@ function ProductDetailBody({ product }: { product: Product }) {
 
           {showReviewForm && (
             <form onSubmit={handleReviewSubmit} className="bg-[#FAF7F2] border border-[#769055]/30 p-4 sm:p-5 space-y-4">
-              <h4 className="font-display text-sm font-bold text-charcoal uppercase tracking-wider">Write Your Review</h4>
+              <h4 className="text-sm font-bold text-charcoal uppercase tracking-wider">Write Your Review</h4>
 
               {reviewSuccess && (
                 <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold">
@@ -872,7 +872,7 @@ function ProductDetailBody({ product }: { product: Product }) {
                 </button>
               </div>
 
-              <h1 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-charcoal leading-snug">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-charcoal leading-snug tracking-tight">
                 {name}
               </h1>
 
@@ -893,7 +893,7 @@ function ProductDetailBody({ product }: { product: Product }) {
               {/* Price Row */}
               <div className="flex items-baseline justify-between py-2 border-y border-border/60 flex-wrap gap-y-1">
                 <div className="flex items-baseline gap-2.5 sm:gap-3 flex-wrap">
-                  <span className="font-display text-xl sm:text-3xl font-bold text-[#2c2420]">
+                  <span className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#2c2420]">
                     Rs. {activePrice.toLocaleString('en-IN')}.00
                   </span>
                   {activeOriginalPrice > activePrice && (
@@ -1098,7 +1098,7 @@ function ProductDetailBody({ product }: { product: Product }) {
           <section className="pt-6 sm:pt-8">
             <div className="text-center mb-8 sm:mb-10">
               <p className="text-[#c9973a] text-xs uppercase tracking-[0.3em] font-semibold mb-2">Complete The Look</p>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-charcoal">You May Also Love</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-charcoal">You May Also Love</h2>
               <p className="text-muted text-xs sm:text-sm mt-2">Handpicked complementary styles tailored for your celebrations</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-8">
@@ -1117,7 +1117,7 @@ function ProductDetailBody({ product }: { product: Product }) {
       >
         <div className="flex items-center gap-2.5">
           <div className="flex flex-col leading-tight shrink-0">
-            <span className="font-display text-base font-bold text-charcoal">
+            <span className="text-base font-bold tracking-tight text-charcoal">
               Rs. {activePrice.toLocaleString('en-IN')}
             </span>
             {activeOriginalPrice > activePrice && (

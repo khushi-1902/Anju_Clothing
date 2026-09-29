@@ -53,9 +53,10 @@ export function mapApiProduct(p: ApiProduct): Product {
     description: '',
     fabric: p.fabric ?? '',
     work: '',
-    sizes: unique(p.variants.map((v) => v.size)),
-    colors: unique(p.variants.map((v) => v.color)),
-    inStock: p.variants.some((v) => v.stock > 0),
+    sizes: unique(p.variants?.map((v) => v.size) || []),
+    colors: unique(p.variants?.map((v) => v.color) || []),
+    variants: p.variants,
+    inStock: p.variants?.some((v) => v.stock > 0) || false,
     isNewArrival,
     isBestseller,
     isSale,
@@ -410,6 +411,8 @@ export interface Order {
   shippingFee: number
   discountAmount: number
   totalAmount: number
+  amountPayableNow?: number
+  amountDueOnDelivery?: number
   paymentMethod: string
   paymentStatus: string
   orderStatus: string
@@ -422,23 +425,113 @@ export interface Order {
   updatedAt?: string
 }
 
-export async function createOrder(payload: Omit<Order, 'orderNumber' | 'createdAt' | 'timeline'>): Promise<Order> {
+export interface CreateOrderPayload {
+  items: Array<{
+    productVariantId: number
+    quantity: number
+  }>
+  paymentMethod: 'PREPAID' | 'COD'
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  shippingAddress: ShippingAddress
+  notes?: string
+}
+
+export async function createOrder(
+  payload: CreateOrderPayload,
+  token?: string | null
+): Promise<Order> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const res = await fetch(`${API_URL}/api/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   })
+  const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || 'Failed to place order')
+    throw new Error(data.error || 'Failed to place order.')
   }
-  const data: { order: Order } = await res.json()
   return data.order
 }
 
-export async function fetchUserOrders(userIdOrEmail: string): Promise<Order[]> {
+export async function createPaymentOrder(
+  orderNumber: string,
+  token?: string | null
+): Promise<{
+  razorpayOrderId: string
+  amount: number
+  currency: string
+  keyId: string
+  orderId: number
+  orderNumber: string
+  paymentMethod: string
+  amountPayableNow: number
+  amountDueOnDelivery: number
+}> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_URL}/api/payments/create-order`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ orderNumber }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to initialize payment order.')
+  }
+  return data
+}
+
+export async function verifyPayment(
+  payload: {
+    razorpay_order_id: string
+    razorpay_payment_id: string
+    razorpay_signature: string
+  },
+  token?: string | null
+): Promise<{
+  success: boolean
+  message: string
+  orderNumber: string
+  paymentStatus: string
+  paymentMethod: string
+  razorpayPaymentId: string
+  amountPaid: number
+  amountDueOnDelivery: number
+  totalAmount: number
+}> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_URL}/api/payments/verify`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.error || 'Payment signature verification failed.')
+  }
+  return data
+}
+
+export async function fetchUserOrders(userIdOrEmail: string, token?: string | null): Promise<Order[]> {
   try {
-    const res = await fetch(`${API_URL}/api/orders/user/${encodeURIComponent(userIdOrEmail)}`)
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    const res = await fetch(`${API_URL}/api/orders/user/my-orders`, { headers })
     if (!res.ok) return []
     const data: { orders: Order[] } = await res.json()
     return data.orders || []
@@ -448,9 +541,7 @@ export async function fetchUserOrders(userIdOrEmail: string): Promise<Order[]> {
 }
 
 export async function trackOrder(orderNumber: string, verify?: string): Promise<Order> {
-  const url = `${API_URL}/api/orders/track/${encodeURIComponent(orderNumber)}${
-    verify ? `?verify=${encodeURIComponent(verify)}` : ''
-  }`
+  const url = `${API_URL}/api/orders/${encodeURIComponent(orderNumber)}`
   const res = await fetch(url)
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))

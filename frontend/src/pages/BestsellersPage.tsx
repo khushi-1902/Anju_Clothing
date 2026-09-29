@@ -51,7 +51,7 @@ export function BestsellersPage() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold/15 border border-gold/40 text-[#769055] text-xs font-bold uppercase tracking-widest mb-3">
             ⭐ Most Loved Collection
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-charcoal uppercase tracking-wide">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-charcoal uppercase">
             Shop Bestsellers
           </h1>
           <p className="text-muted text-xs sm:text-sm mt-3 max-w-xl mx-auto">

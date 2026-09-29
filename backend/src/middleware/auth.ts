@@ -31,8 +31,15 @@ export const clerkAuth = clerkMiddleware()
 
 /**
  * Route-level guard: Ensures a valid Clerk session token is provided.
+ * Returns 401 Unauthorized for API clients when unauthenticated.
  */
-export const requireLogin = requireAuth()
+export function requireLogin(req: Request, res: Response, next: NextFunction) {
+  const auth = getAuth(req)
+  if (!auth || !auth.userId) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required' })
+  }
+  next()
+}
 
 /**
  * Admin-Only guard:
@@ -55,9 +62,9 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
 
     // 1. Lookup user in PostgreSQL
     let { rows } = await pool.query<AuthenticatedUser>(
-      `SELECT id, COALESCE("clerkUserId", clerk_user_id) AS "clerkUserId", email, name, role 
+      `SELECT id, "clerkUserId", email, name, role 
        FROM users 
-       WHERE ("clerkUserId" = $1 OR clerk_user_id = $1)
+       WHERE "clerkUserId" = $1
        LIMIT 1`,
       [clerkUserId]
     )
@@ -77,8 +84,8 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
         const role: UserRole = shouldBeAdmin ? 'ADMIN' : (user?.role || 'CUSTOMER')
 
         const upsertRes = await pool.query<AuthenticatedUser>(
-          `INSERT INTO users ("clerkUserId", clerk_user_id, email, name, role, "updatedAt", updated_at)
-           VALUES ($1, $1, $2, $3, $4, NOW(), NOW())
+          `INSERT INTO users ("clerkUserId", email, name, role, "updatedAt")
+           VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT ("clerkUserId") 
            DO UPDATE SET 
              email = EXCLUDED.email, 

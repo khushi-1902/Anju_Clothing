@@ -27,7 +27,7 @@ export function AdminDashboardPage() {
       setRecentOrders(ordersData)
     } catch (err: any) {
       console.error('[Dashboard Load Error]:', err)
-      setError(err.message || 'Failed to load dashboard metrics from PostgreSQL')
+      setError(err.message || 'Failed to load dashboard metrics')
     } finally {
       setLoading(false)
     }
@@ -38,39 +38,24 @@ export function AdminDashboardPage() {
   }, [getToken])
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'delivered':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300'
-      case 'in transit':
-      case 'shipped':
-        return 'bg-blue-100 text-blue-800 border-blue-300'
-      case 'processing':
-      case 'confirmed':
-        return 'bg-amber-100 text-amber-800 border-amber-300'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-300'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
-    }
-  }
-
-  const getPaymentBadge = (status: string) => {
-    return status.toLowerCase() === 'paid'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : 'bg-amber-50 text-amber-700 border-amber-200'
+    const s = (status || '').toLowerCase()
+    if (s === 'delivered') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+    if (s === 'shipped' || s === 'in transit') return 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20'
+    if (s === 'cancelled' || s === 'refunded') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20'
+    return 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20'
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-[#232B1E]">
       
-      {/* Top Header & Refresh */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#202223] tracking-tight">
-            Store Overview
+          <h1 className="text-xl font-semibold text-[#1B2513] tracking-tight">
+            Dashboard Overview
           </h1>
-          <p className="text-xs text-[#6D7175] mt-0.5">
-            Real-time sales, order fulfillment, and inventory metrics from your database.
+          <p className="text-xs text-[#5D6F4E] mt-0.5">
+            Key operational metrics, revenue performance, and recent customer activities.
           </p>
         </div>
 
@@ -78,173 +63,182 @@ export function AdminDashboardPage() {
           <button
             onClick={loadDashboardData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#BABFC3] hover:bg-gray-50 text-xs font-semibold text-[#202223] rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#D5DFC9] hover:bg-[#F4F7ED] text-xs font-medium text-[#3A4B29] rounded-lg transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
           >
-            <span className={loading ? 'animate-spin' : ''}>🔄</span>
-            <span>Refresh Data</span>
+            <svg className={`w-3.5 h-3.5 text-[#5D6F4E] ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            <span>Sync Metrics</span>
           </button>
+
           <Link
             to="/admin/orders"
-            className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-semibold rounded-lg transition-colors shadow-2xs"
           >
-            <span>Manage Orders →</span>
+            <span>View All Orders</span>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
           </Link>
         </div>
       </div>
 
-      {/* Error Alert if any */}
+      {/* Error Alert */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{error}</span>
-          </div>
-          <button onClick={loadDashboardData} className="font-bold underline cursor-pointer">
-            Try Again
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center justify-between">
+          <span className="font-medium">{error}</span>
+          <button onClick={loadDashboardData} className="font-semibold underline cursor-pointer">
+            Retry
           </button>
         </div>
       )}
 
-      {/* 1. Key Metrics Cards Row */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Metric 1: Total Orders */}
-        <div className="bg-white p-5 rounded-xl border border-[#E1E3E5] shadow-xs hover:border-gray-300 transition-all flex flex-col justify-between">
+        {/* Metric 1: Total Revenue */}
+        <div className="bg-white p-5 rounded-xl border border-[#E3E9DD] shadow-2xs hover:border-[#CAD7BE] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6D7175]">Total Orders</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-sm font-bold">
-              🛍️
+            <span className="text-xs font-medium text-[#5D6F4E]">Gross Sales</span>
+            <div className="w-8 h-8 rounded-lg bg-[#F0F5EB] text-[#4A6333] flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-bold text-[#202223] tracking-tight">
+            <div className="text-2xl font-bold text-[#202E15] tracking-tight tabular-nums">
               {loading ? (
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-7 w-28 bg-[#F0F5EB] rounded animate-pulse" />
               ) : (
-                stats?.totalOrders ?? 0
+                `₹${(stats?.totalRevenue ?? 0).toLocaleString('en-IN')}`
               )}
             </div>
-            <p className="text-[11px] text-[#6D7175] mt-1">
-              Storewide purchases to date
+            <p className="text-[11px] text-[#7A8E6A] mt-1">
+              Avg Order: ₹{(stats?.avgOrderValue ?? 0).toLocaleString('en-IN')}
             </p>
           </div>
         </div>
 
-        {/* Metric 2: Total Revenue */}
-        <div className="bg-white p-5 rounded-xl border border-[#E1E3E5] shadow-xs hover:border-gray-300 transition-all flex flex-col justify-between">
+        {/* Metric 2: Total Orders */}
+        <div className="bg-white p-5 rounded-xl border border-[#E3E9DD] shadow-2xs hover:border-[#CAD7BE] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6D7175]">Total Revenue</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-bold">
-              💰
+            <span className="text-xs font-medium text-[#5D6F4E]">Total Orders</span>
+            <div className="w-8 h-8 rounded-lg bg-[#F0F5EB] text-[#4A6333] flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-bold text-[#769055] tracking-tight">
+            <div className="text-2xl font-bold text-[#202E15] tracking-tight tabular-nums">
               {loading ? (
-                <div className="h-8 w-28 bg-gray-200 rounded animate-pulse" />
+                <div className="h-7 w-16 bg-[#F0F5EB] rounded animate-pulse" />
               ) : (
-                `Rs. ${(stats?.totalRevenue ?? 0).toLocaleString('en-IN')}`
+                stats?.totalOrders ?? 0
               )}
             </div>
-            <p className="text-[11px] text-[#6D7175] mt-1">
-              Avg order: Rs. {(stats?.avgOrderValue ?? 0).toLocaleString('en-IN')}
+            <p className="text-[11px] text-[#7A8E6A] mt-1">
+              Lifetime placed transactions
             </p>
           </div>
         </div>
 
         {/* Metric 3: Pending Orders */}
-        <div className="bg-white p-5 rounded-xl border border-[#E1E3E5] shadow-xs hover:border-gray-300 transition-all flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-xl border border-[#E3E9DD] shadow-2xs hover:border-[#CAD7BE] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6D7175]">Pending Fulfillment</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm font-bold">
-              ⏳
+            <span className="text-xs font-medium text-[#5D6F4E]">Pending Dispatch</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-bold text-[#202223] tracking-tight flex items-baseline gap-2">
+            <div className="text-2xl font-bold text-[#202E15] tracking-tight flex items-baseline gap-2 tabular-nums">
               {loading ? (
-                <div className="h-8 w-14 bg-gray-200 rounded animate-pulse" />
+                <div className="h-7 w-14 bg-[#F0F5EB] rounded animate-pulse" />
               ) : (
                 <>
                   <span>{stats?.pendingOrders ?? 0}</span>
                   {(stats?.pendingOrders ?? 0) > 0 && (
-                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                      Needs Action
+                    <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                      Action Needed
                     </span>
                   )}
                 </>
               )}
             </div>
-            <p className="text-[11px] text-[#6D7175] mt-1">
-              Awaiting packing & dispatch
+            <p className="text-[11px] text-[#7A8E6A] mt-1">
+              Awaiting courier packaging
             </p>
           </div>
         </div>
 
         {/* Metric 4: Total Products */}
-        <div className="bg-white p-5 rounded-xl border border-[#E1E3E5] shadow-xs hover:border-gray-300 transition-all flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-xl border border-[#E3E9DD] shadow-2xs hover:border-[#CAD7BE] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6D7175]">Active Products</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center text-sm font-bold">
-              👗
+            <span className="text-xs font-medium text-[#5D6F4E]">Live Catalog</span>
+            <div className="w-8 h-8 rounded-lg bg-[#F0F5EB] text-[#4A6333] flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+              </svg>
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-bold text-[#202223] tracking-tight">
+            <div className="text-2xl font-bold text-[#202E15] tracking-tight tabular-nums">
               {loading ? (
-                <div className="h-8 w-14 bg-gray-200 rounded animate-pulse" />
+                <div className="h-7 w-14 bg-[#F0F5EB] rounded animate-pulse" />
               ) : (
                 stats?.totalProducts ?? 0
               )}
             </div>
-            <p className="text-[11px] text-[#6D7175] mt-1">
-              Live in boutique catalog
+            <p className="text-[11px] text-[#7A8E6A] mt-1">
+              Active SKU variants
             </p>
           </div>
         </div>
 
       </div>
 
-      {/* 2. Sales Over Time Chart */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#E1E3E5] shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+      {/* Sales Activity Visualizer */}
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#E3E9DD] shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EBEFE6]">
           <div>
-            <h2 className="text-sm font-bold text-[#202223]">Sales Activity Over Time</h2>
-            <p className="text-xs text-[#6D7175]">Daily revenue and order volume trends</p>
+            <h2 className="text-sm font-semibold text-[#202E15]">Revenue & Volume Trends</h2>
+            <p className="text-xs text-[#5D6F4E]">Historical performance across daily checkouts</p>
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-xs">
+          <div className="flex items-center gap-1 bg-[#F0F5EB] p-0.5 rounded-lg text-xs">
             <button
               onClick={() => setChartView('revenue')}
-              className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                 chartView === 'revenue'
-                  ? 'bg-white text-[#202223] shadow-xs'
-                  : 'text-[#6D7175] hover:text-[#202223]'
+                  ? 'bg-white text-[#202E15] shadow-2xs font-semibold'
+                  : 'text-[#5D6F4E] hover:text-[#202E15]'
               }`}
             >
-              Revenue (Rs.)
+              Revenue (₹)
             </button>
             <button
               onClick={() => setChartView('orders')}
-              className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                 chartView === 'orders'
-                  ? 'bg-white text-[#202223] shadow-xs'
-                  : 'text-[#6D7175] hover:text-[#202223]'
+                  ? 'bg-white text-[#202E15] shadow-2xs font-semibold'
+                  : 'text-[#5D6F4E] hover:text-[#202E15]'
               }`}
             >
-              Orders Count
+              Order Count
             </button>
           </div>
         </div>
 
-        {/* Responsive SVG Chart */}
         {loading ? (
-          <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-[#6D7175]">
+          <div className="h-44 bg-[#F7F9F5] rounded-lg flex items-center justify-center text-xs text-[#7A8E6A]">
             Loading sales metrics...
           </div>
         ) : stats?.salesByDay && stats.salesByDay.length > 0 ? (
           <div className="pt-2">
-            {/* Chart Bars */}
-            <div className="h-48 w-full flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto">
+            <div className="h-44 w-full flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto">
               {(() => {
                 const maxVal = Math.max(
                   ...stats.salesByDay.map((d) => (chartView === 'revenue' ? d.revenue : d.orders)),
@@ -252,31 +246,31 @@ export function AdminDashboardPage() {
                 )
                 return stats.salesByDay.map((item, idx) => {
                   const val = chartView === 'revenue' ? item.revenue : item.orders
-                  const heightPercent = Math.max(Math.round((val / maxVal) * 100), 10)
+                  const heightPercent = Math.max(Math.round((val / maxVal) * 100), 8)
                   return (
                     <div
                       key={idx}
                       className="flex-1 min-w-[36px] flex flex-col items-center gap-1.5 group relative"
                     >
-                      {/* Tooltip on Hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-[#202223] text-white text-[10px] px-2 py-1 rounded pointer-events-none whitespace-nowrap shadow-md z-10">
-                        {item.date}: {chartView === 'revenue' ? `Rs. ${item.revenue.toLocaleString('en-IN')}` : `${item.orders} order(s)`}
+                      {/* Tooltip */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-[#233019] text-white text-[10px] px-2 py-1 rounded pointer-events-none whitespace-nowrap shadow-md z-10 font-mono">
+                        {item.date}: {chartView === 'revenue' ? `₹${item.revenue.toLocaleString('en-IN')}` : `${item.orders} orders`}
                       </div>
 
                       {/* Bar */}
-                      <div className="w-full bg-gray-100 rounded-t-sm h-full flex items-end">
+                      <div className="w-full bg-[#F0F5EB] rounded-t h-full flex items-end">
                         <div
                           style={{ height: `${heightPercent}%` }}
-                          className={`w-full rounded-t-sm transition-all duration-300 ${
+                          className={`w-full rounded-t transition-all duration-300 ${
                             chartView === 'revenue'
                               ? 'bg-[#769055] group-hover:bg-[#5e7343]'
-                              : 'bg-blue-600 group-hover:bg-blue-700'
+                              : 'bg-[#4B6B38] group-hover:bg-[#3C572D]'
                           }`}
                         />
                       </div>
 
-                      {/* X-axis date label */}
-                      <span className="text-[10px] text-[#6D7175] font-mono truncate max-w-full">
+                      {/* Label */}
+                      <span className="text-[10px] text-[#7A8E6A] font-mono truncate max-w-full">
                         {item.date.slice(5)}
                       </span>
                     </div>
@@ -286,103 +280,93 @@ export function AdminDashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="h-40 bg-[#FAF8F5] rounded-lg border border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-4">
-            <span className="text-xl">📊</span>
-            <p className="text-xs font-semibold text-[#202223] mt-1">No sales data recorded yet</p>
-            <p className="text-[11px] text-[#6D7175]">Sales graphs will populate automatically as new customer orders are placed.</p>
+          <div className="h-36 bg-[#F7F9F5] rounded-lg border border-dashed border-[#D5DFC9] flex flex-col items-center justify-center text-center p-4">
+            <p className="text-xs font-semibold text-[#3A4B29]">No chart data yet</p>
+            <p className="text-[11px] text-[#7A8E6A] mt-0.5">Graphs will automatically populate as customer checkouts occur.</p>
           </div>
         )}
       </div>
 
-      {/* 3. Recent Orders List Table */}
-      <div className="bg-white rounded-xl border border-[#E1E3E5] shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+      {/* Recent Orders Table */}
+      <div className="bg-white rounded-xl border border-[#E3E9DD] shadow-2xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-[#EBEFE6] flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-[#202223]">Recent Customer Orders</h2>
-            <p className="text-xs text-[#6D7175]">Last 10 orders received</p>
+            <h2 className="text-sm font-semibold text-[#202E15]">Recent Transactions</h2>
+            <p className="text-xs text-[#5D6F4E]">Latest orders placed on your store</p>
           </div>
           <Link
             to="/admin/orders"
-            className="text-xs text-[#769055] hover:underline font-bold"
+            className="text-xs text-[#769055] hover:text-[#5e7343] hover:underline font-semibold"
           >
-            View All Orders ({stats?.totalOrders ?? 0}) →
+            All Orders ({stats?.totalOrders ?? 0}) →
           </Link>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#FAF8F5] border-b border-gray-100 text-[11px] font-bold text-[#6D7175] uppercase tracking-wider">
-                <th className="py-3 px-4">Order #</th>
+              <tr className="bg-[#F7F9F5] border-b border-[#EBEFE6] text-[11px] font-semibold text-[#5D6F4E] uppercase tracking-wider">
+                <th className="py-3 px-4">Order</th>
                 <th className="py-3 px-4">Customer</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Payment</th>
-                <th className="py-3 px-4">Fulfillment Status</th>
-                <th className="py-3 px-4 text-right">Total Amount</th>
+                <th className="py-3 px-4">Fulfillment</th>
+                <th className="py-3 px-4 text-right">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[#EBEFE6]">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-16 bg-gray-200 rounded ml-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-16 bg-[#F0F5EB] rounded ml-auto" /></td>
                   </tr>
                 ))
               ) : recentOrders.length > 0 ? (
                 recentOrders.map((ord) => (
-                  <tr key={ord.orderNumber} className="hover:bg-gray-50/80 transition-colors">
+                  <tr key={ord.orderNumber} className="hover:bg-[#F9FAF7] transition-colors">
                     <td className="py-3.5 px-4">
-                      <span className="font-mono font-bold text-[#202223] text-xs">
-                        {ord.orderNumber}
+                      <span className="font-mono font-semibold text-[#202E15]">
+                        #{ord.orderNumber}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-[#202223] truncate max-w-[160px]">
+                      <div className="font-medium text-[#202E15] truncate max-w-[160px]">
                         {ord.customerName}
                       </div>
-                      <div className="text-[11px] text-[#6D7175] truncate max-w-[160px]">
+                      <div className="text-[11px] text-[#7A8E6A] font-mono truncate max-w-[160px]">
                         {ord.customerEmail}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-[#6D7175] text-[11px] whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-[#5D6F4E] text-[11px] whitespace-nowrap">
                       {new Date(ord.createdAt).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',
-                        year: 'numeric',
                       })}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getPaymentBadge(
-                          ord.paymentStatus || 'Pending'
-                        )}`}
-                      >
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F5EB] text-[#3E522B]">
                         {ord.paymentStatus || 'Pending'}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(
-                          ord.orderStatus || 'Confirmed'
-                        )}`}
-                      >
-                        {ord.orderStatus || 'Confirmed'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${getStatusBadge(ord.orderStatus || 'Pending')}`}>
+                        {ord.orderStatus || 'Pending'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-[#202223]">
-                      Rs. {ord.totalAmount.toLocaleString('en-IN')}.00
+                    <td className="py-3.5 px-4 text-right font-semibold text-[#202E15] tabular-nums">
+                      ₹{ord.totalAmount.toLocaleString('en-IN')}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
-                    No recent orders found.
+                  <td colSpan={6} className="py-8 text-center text-[#7A8E6A] text-xs">
+                    No recent orders.
                   </td>
                 </tr>
               )}

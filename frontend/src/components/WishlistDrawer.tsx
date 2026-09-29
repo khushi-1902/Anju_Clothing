@@ -30,7 +30,7 @@ export function WishlistDrawer() {
           {/* Header */}
           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-ivory">
             <div className="flex items-center gap-2">
-              <h2 className="font-display text-xl font-bold text-charcoal">Your Wishlist</h2>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-charcoal">Your Wishlist</h2>
               <span className="text-xs bg-[#c9973a] text-white px-2 py-0.5 rounded-full font-bold">
                 {wishedProducts.length}
               </span>
@@ -53,7 +53,7 @@ export function WishlistDrawer() {
                 <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto text-3xl">
                   💖
                 </div>
-                <h3 className="font-display text-lg font-bold text-charcoal">Your wishlist is empty</h3>
+                <h3 className="text-lg font-bold tracking-tight text-charcoal">Your wishlist is empty</h3>
                 <p className="text-xs text-muted max-w-xs mx-auto">
                   Save your favorite styles here while browsing to keep track of festive outfits!
                 </p>

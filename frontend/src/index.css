@@ -36,6 +36,15 @@ body {
 }
 
 h1, h2, h3, h4 {
+  font-family: var(--font-body);
+  letter-spacing: -0.015em;
+}
+
+/* Traditional styling strictly kept on the Homepage only */
+.homepage-root h1,
+.homepage-root h2,
+.homepage-root h3,
+.homepage-root h4 {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
 }

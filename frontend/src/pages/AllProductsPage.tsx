@@ -249,7 +249,7 @@ export function AllProductsPage() {
         ) : productsList.length === 0 ? (
           <div className="text-center py-24 bg-cream/40 border border-border p-8 space-y-4">
             <div className="text-4xl">🔍</div>
-            <h3 className="font-display text-xl font-bold text-charcoal">No outfits found</h3>
+            <h3 className="text-xl font-bold tracking-tight text-charcoal">No outfits found</h3>
             <p className="text-xs text-muted max-w-sm mx-auto">
               Please adjust your filters or search keywords to view other styles.
             </p>

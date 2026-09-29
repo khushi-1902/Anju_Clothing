@@ -184,7 +184,7 @@ export function Footer() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
               {sections.map(section => (
                 <div key={section.key} className="space-y-4">
-                  <h3 className="font-display text-sm font-bold uppercase tracking-widest text-white border-b border-white/20 pb-2 inline-block">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-white border-b border-white/20 pb-2 inline-block">
                     {section.title}
                   </h3>
                   {section.content}
@@ -208,7 +208,7 @@ export function Footer() {
                   className="w-full flex items-center justify-between px-5 py-5 text-left"
                   aria-expanded={isOpen}
                 >
-                  <span className="font-display text-sm font-bold uppercase tracking-widest text-white">
+                  <span className="text-sm font-bold uppercase tracking-widest text-white">
                     {section.title}
                   </span>
                   <span className="text-xl leading-none text-white shrink-0">

@@ -86,7 +86,7 @@ export function TrackOrderPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#769055]/15 border border-[#769055]/30 text-[#769055] text-xs font-bold uppercase tracking-widest">
             <span>📦</span> Real-Time Courier Tracking
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-charcoal">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-charcoal">
             Track Your Anju Clothing Order
           </h1>
           <p className="text-xs sm:text-sm text-muted max-w-lg mx-auto px-2">
@@ -193,7 +193,7 @@ export function TrackOrderPage() {
                   Order Reference
                 </span>
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="font-display text-xl sm:text-2xl font-bold tracking-wide text-white">
+                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                     #{order.orderNumber}
                   </span>
                   <span className="text-[11px] sm:text-xs text-[#D1C7BD]">
@@ -250,7 +250,7 @@ export function TrackOrderPage() {
 
             {/* Step-by-Step Interactive Timeline */}
             <div className="p-5 sm:p-8 border-b border-border/80">
-              <h3 className="font-display text-sm sm:text-base font-bold text-charcoal mb-6 flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-charcoal mb-6 flex items-center gap-2">
                 <span>📍</span> Live Delivery Journey
               </h3>
 
@@ -298,7 +298,7 @@ export function TrackOrderPage() {
               
               {/* Items List */}
               <div className="md:col-span-7 space-y-4">
-                <h3 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-charcoal border-b border-gray-100 pb-2">
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-charcoal border-b border-gray-100 pb-2">
                   Items in this Order ({order.items.length})
                 </h3>
 
@@ -408,7 +408,7 @@ export function TrackOrderPage() {
         {cancelModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">
             <div className="bg-white max-w-md w-full p-6 space-y-4 shadow-2xl border border-gray-200">
-              <h3 className="font-display text-lg font-bold text-charcoal">
+              <h3 className="text-lg font-bold tracking-tight text-charcoal">
                 Cancel Order #{order?.orderNumber}?
               </h3>
               <p className="text-xs text-muted leading-relaxed">

@@ -111,7 +111,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
                     </span>
                   )}
                 </div>
-                <h3 className="font-display text-xl font-bold text-charcoal">
+                <h3 className="text-xl font-bold tracking-tight text-charcoal">
                   Welcome, {user?.fullName || user?.firstName || 'Valued Member'}!
                 </h3>
                 {primaryEmail && (
@@ -203,7 +203,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
                     elements: {
                       card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
                       rootBox: 'w-full max-w-full',
-                      headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
+                      headerTitle: 'text-lg sm:text-xl font-bold tracking-tight text-charcoal',
                       formButtonPrimary:
                         'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
                       socialButtonsBlockButton:
@@ -232,7 +232,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
                     elements: {
                       card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
                       rootBox: 'w-full max-w-full',
-                      headerTitle: 'font-display text-lg sm:text-xl text-charcoal',
+                      headerTitle: 'text-lg sm:text-xl font-bold tracking-tight text-charcoal',
                       formButtonPrimary:
                         'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
                       socialButtonsBlockButton:

@@ -29,6 +29,7 @@
     "express": "^5.2.1",
     "multer": "^2.4.0",
     "pg": "^8.23.0",
+    "razorpay": "^2.9.8",
     "svix": "^2.5.0"
   },
   "devDependencies": {

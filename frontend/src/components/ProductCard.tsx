@@ -116,8 +116,8 @@ export function ProductCard({ product, className = '' }: ProductCardProps) {
           {category || 'Anju Clothing'}
         </p>
 
-        {/* Product Title — display serif, heading-like treatment */}
-        <h3 className="font-display text-sm sm:text-base font-semibold text-charcoal group-hover:text-[#769055] transition-colors line-clamp-1 leading-snug tracking-tight">
+        {/* Product Title — clean modern typography */}
+        <h3 className="text-sm sm:text-base font-semibold text-charcoal group-hover:text-[#769055] transition-colors line-clamp-1 leading-snug tracking-tight">
           {name}
         </h3>
 

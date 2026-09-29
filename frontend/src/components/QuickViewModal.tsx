@@ -70,7 +70,7 @@ export function QuickViewModal() {
                   </div>
                 )}
 
-                <h3 className="font-display text-xl font-bold text-charcoal">{name}</h3>
+                <h3 className="text-xl font-bold tracking-tight text-charcoal">{name}</h3>
 
                 <div className="flex items-baseline gap-2.5">
                   <span className="font-bold text-xl text-olive">₹{price.toLocaleString()}</span>

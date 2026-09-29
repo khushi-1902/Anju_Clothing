@@ -85,7 +85,7 @@ export function OrdersPage() {
             <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto text-3xl">
               🛍️
             </div>
-            <h2 className="font-display text-2xl font-bold text-charcoal">
+            <h2 className="text-2xl font-bold tracking-tight text-charcoal">
               Sign In to View Your Orders
             </h2>
             <p className="text-xs sm:text-sm text-muted">
@@ -127,7 +127,7 @@ export function OrdersPage() {
                 <span className="text-[10px] text-[#C9973A] font-bold uppercase tracking-widest block">
                   ✦ Valued Member
                 </span>
-                <h1 className="font-display text-xl sm:text-2xl font-bold text-white">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                   Welcome back, {user?.firstName || 'there'}!
                 </h1>
                 <p className="text-xs text-[#D1C7BD]">
@@ -228,7 +228,7 @@ export function OrdersPage() {
                   <div className="w-14 h-14 sm:w-16 sm:h-16 bg-cream rounded-full flex items-center justify-center mx-auto text-2xl sm:text-3xl">
                     👗
                   </div>
-                  <h3 className="font-display text-base sm:text-lg font-bold text-charcoal">
+                  <h3 className="text-base sm:text-lg font-bold tracking-tight text-charcoal">
                     No orders found in this category
                   </h3>
                   <p className="text-xs text-muted max-w-sm mx-auto">

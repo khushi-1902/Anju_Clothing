@@ -150,6 +150,21 @@ adminOrdersRouter.patch('/:orderNumber/status', async (req: Request, res: Respon
     notes,
   } = req.body
 
+  const ALLOWED_PAYMENT_STATUSES = ['PENDING', 'ADVANCE_PAID', 'PAID', 'FAILED']
+  const ALLOWED_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+
+  if (paymentStatus && !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus.toUpperCase())) {
+    return res.status(400).json({
+      error: `Invalid paymentStatus "${paymentStatus}". Allowed values: ${ALLOWED_PAYMENT_STATUSES.join(', ')}`,
+    })
+  }
+
+  if (orderStatus && !ALLOWED_ORDER_STATUSES.some(s => s.toLowerCase() === orderStatus.toLowerCase())) {
+    return res.status(400).json({
+      error: `Invalid orderStatus "${orderStatus}". Allowed values: PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED`,
+    })
+  }
+
   try {
     // 1. Fetch current order to update timeline
     const currentRes = await pool.query(
