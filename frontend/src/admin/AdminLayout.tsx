@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
 
 interface NavItem {
   name: string
   to: string
-  icon: (props: { className?: string }) => JSX.Element
+  icon: (props: { className?: string }) => React.ReactNode
   badge?: string
 }
 

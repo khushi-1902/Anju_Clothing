@@ -8,20 +8,42 @@ interface AuthPageProps {
   initialMode?: 'sign-in' | 'sign-up'
 }
 
+const clerkAppearance = {
+  layout: {
+    socialButtonsVariant: 'blockButton' as const,
+    logoPlacement: 'none' as const,
+  },
+  variables: {
+    colorPrimary: '#769055',
+    colorText: '#2c2420',
+    colorTextSecondary: '#666666',
+    fontFamily: 'inherit',
+  },
+  elements: {
+    card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
+    rootBox: 'w-full max-w-full',
+    headerTitle: 'text-lg sm:text-xl font-bold tracking-tight text-charcoal',
+    formButtonPrimary:
+      'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
+    socialButtonsBlockButton:
+      'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
+    formFieldInput:
+      'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
+    footerActionLink: 'text-[#769055] hover:underline font-bold',
+  },
+}
+
 export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
   const [searchParams] = useSearchParams()
   const redirectUrl = searchParams.get('redirect_url') || '/'
-  const [activeTab, setActiveTab] = useState<'sign-in' | 'sign-up'>(initialMode)
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : ''
+  const activeTab = initialMode
   const { user } = useUser()
   const { getToken, isSignedIn } = useAuth()
   const clerk = useClerk()
   const navigate = useNavigate()
   const [isAdminUser, setIsAdminUser] = useState(false)
   const [verifyingRole, setVerifyingRole] = useState(false)
-
-  useEffect(() => {
-    setActiveTab(initialMode)
-  }, [initialMode])
 
   useEffect(() => {
     let active = true
@@ -56,8 +78,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
   }, [isSignedIn, getToken, redirectUrl, navigate])
 
   const handleSignOut = async () => {
-    await clerk.signOut()
-    setActiveTab('sign-in')
+    await clerk.signOut({ redirectUrl: '/sign-in' })
     setIsAdminUser(false)
   }
 
@@ -69,7 +90,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
   return (
     <div className="min-h-[calc(100vh-140px)] bg-[#FAF8F5] py-8 sm:py-14 px-3 sm:px-6 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto">
-        
+
         {/* Brand Header */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-block hover:opacity-80 transition-opacity">
@@ -86,7 +107,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
 
         {/* Main Centered Form Card */}
         <div className="bg-white border border-[#EBE4D8] shadow-xl p-5 sm:p-8 w-full overflow-hidden rounded-xl">
-          
+
           {/* Active Logged In Session */}
           <SignedIn>
             <div className="text-center py-2 space-y-4">
@@ -135,7 +156,7 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
                 >
                   🛍️ View My Orders & Account →
                 </button>
-                
+
                 <button
                   onClick={() => navigate('/all-products')}
                   className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-charcoal text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-lg"
@@ -161,23 +182,21 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
             <div className="flex border-b border-gray-200 mb-6">
               <button
                 type="button"
-                onClick={() => setActiveTab('sign-in')}
-                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
-                  activeTab === 'sign-in'
+                onClick={() => navigate(`/sign-in${search}`)}
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${activeTab === 'sign-in'
                     ? 'border-[#769055] text-[#769055]'
                     : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}
+                  }`}
               >
                 Log In
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('sign-up')}
-                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
-                  activeTab === 'sign-up'
+                onClick={() => navigate(`/sign-up${search}`)}
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${activeTab === 'sign-up'
                     ? 'border-[#769055] text-[#769055]'
                     : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}
+                  }`}
               >
                 Create Account
               </button>
@@ -187,61 +206,19 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
             <div className="w-full flex justify-center overflow-x-hidden min-h-[380px]">
               {activeTab === 'sign-in' ? (
                 <SignIn
-                  routing="hash"
+                  routing="path"
+                  path="/sign-in"
+                  signUpUrl="/sign-up"
                   fallbackRedirectUrl={redirectUrl}
-                  appearance={{
-                    layout: {
-                      socialButtonsVariant: 'blockButton',
-                      logoPlacement: 'none',
-                    },
-                    variables: {
-                      colorPrimary: '#769055',
-                      colorText: '#2c2420',
-                      colorTextSecondary: '#666666',
-                      fontFamily: 'inherit',
-                    },
-                    elements: {
-                      card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
-                      rootBox: 'w-full max-w-full',
-                      headerTitle: 'text-lg sm:text-xl font-bold tracking-tight text-charcoal',
-                      formButtonPrimary:
-                        'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
-                      socialButtonsBlockButton:
-                        'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
-                      formFieldInput:
-                        'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
-                      footerActionLink: 'text-[#769055] hover:underline font-bold',
-                    },
-                  }}
+                  appearance={clerkAppearance}
                 />
               ) : (
                 <SignUp
-                  routing="hash"
+                  routing="path"
+                  path="/sign-up"
+                  signInUrl="/sign-in"
                   fallbackRedirectUrl={redirectUrl}
-                  appearance={{
-                    layout: {
-                      socialButtonsVariant: 'blockButton',
-                      logoPlacement: 'none',
-                    },
-                    variables: {
-                      colorPrimary: '#769055',
-                      colorText: '#2c2420',
-                      colorTextSecondary: '#666666',
-                      fontFamily: 'inherit',
-                    },
-                    elements: {
-                      card: 'shadow-none border-0 p-0 w-full max-w-full bg-transparent',
-                      rootBox: 'w-full max-w-full',
-                      headerTitle: 'text-lg sm:text-xl font-bold tracking-tight text-charcoal',
-                      formButtonPrimary:
-                        'bg-[#769055] hover:bg-[#5e7343] text-white text-xs uppercase font-bold tracking-wider py-2.5 rounded-none',
-                      socialButtonsBlockButton:
-                        'border border-gray-300 rounded-none text-xs font-semibold py-2 hover:bg-gray-50',
-                      formFieldInput:
-                        'rounded-none border-gray-300 text-xs py-2 focus:border-[#769055] max-w-full',
-                      footerActionLink: 'text-[#769055] hover:underline font-bold',
-                    },
-                  }}
+                  appearance={clerkAppearance}
                 />
               )}
             </div>
@@ -268,5 +245,3 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
     </div>
   )
 }
-
-

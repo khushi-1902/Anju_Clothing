@@ -9,7 +9,7 @@ import { WishlistDrawer } from './components/WishlistDrawer'
 import { QuickViewModal } from './components/QuickViewModal'
 
 import { HomePage } from './pages/HomePage'
-import { AllProductsPage } from './pages/AllProductsPage'
+import { ProductListingPage } from './pages/ProductListingPage'
 import { BestsellersPage } from './pages/BestsellersPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ContactUsPage } from './pages/ContactUsPage'
@@ -17,7 +17,7 @@ import { AuthPage } from './pages/AuthPage'
 import { TrackOrderPage } from './pages/TrackOrderPage'
 import { OrdersPage } from './pages/OrdersPage'
 
-// Admin Module (Phase 1 & Phase 2)
+// Admin Module
 import { AdminRouteGuard } from './admin/AdminRouteGuard'
 import { AdminLayout } from './admin/AdminLayout'
 import { AdminDashboardPage } from './admin/pages/AdminDashboardPage'
@@ -35,10 +35,18 @@ function SeoHandler() {
       document.title = 'Store Admin | Anju Clothing Management'
     } else if (path === '/') {
       document.title = 'Anju Clothing | Luxury Indian Ethnic Wear & Handcrafted Festive Outfits'
-    } else if (path.startsWith('/all-products') || path.startsWith('/category')) {
-      document.title = 'Explore All Collections | Anju Clothing'
+    } else if (path.startsWith('/category/')) {
+      const slug = path.replace('/category/', '').replace(/-/g, ' ')
+      const formatted = slug.charAt(0).toUpperCase() + slug.slice(1)
+      document.title = `${formatted} Collection | Anju Clothing`
+    } else if (path.startsWith('/new-arrivals')) {
+      document.title = 'New Arrivals - Latest Indian Ethnic Wear | Anju Clothing'
+    } else if (path.startsWith('/mega-sale')) {
+      document.title = 'Mega Sale - Up to 50% Off Festive Outfits | Anju Clothing'
     } else if (path.startsWith('/bestsellers')) {
       document.title = 'Best Sellers - Most Loved Outfits | Anju Clothing'
+    } else if (path.startsWith('/all-products')) {
+      document.title = 'All Products & Outfits | Luxury Indian Wear | Anju Clothing'
     } else if (path.startsWith('/contact')) {
       document.title = 'Contact Us & International Orders | Anju Clothing'
     } else if (path.startsWith('/sign-in') || path.startsWith('/login')) {
@@ -60,8 +68,10 @@ function MainContent() {
     <main className="flex-1">
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/all-products" element={<AllProductsPage />} />
-        <Route path="/category/:categorySlug" element={<AllProductsPage />} />
+        <Route path="/all-products" element={<ProductListingPage mode="all-products" />} />
+        <Route path="/category/:categorySlug" element={<ProductListingPage mode="category" />} />
+        <Route path="/new-arrivals" element={<ProductListingPage mode="new-arrivals" />} />
+        <Route path="/mega-sale" element={<ProductListingPage mode="mega-sale" />} />
         <Route path="/bestsellers" element={<BestsellersPage />} />
         <Route path="/product/:productId" element={<ProductDetailPage />} />
         <Route path="/contact" element={<ContactUsPage />} />

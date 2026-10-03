@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Product, CartItem, PageType, ShopUser, SignupPayload } from '../types'
-import { PRODUCTS } from '../data/products'
 
 const USERS_KEY = 'anju_users'
 const SESSION_KEY = 'anju_session'
@@ -131,10 +130,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('anju_cart')
-      return saved ? JSON.parse(saved) : [
-        { product: PRODUCTS[0], quantity: 1, selectedSize: 'M' },
-        { product: PRODUCTS[4], quantity: 1, selectedSize: 'Free Size' }
-      ]
+      return saved ? JSON.parse(saved) : []
     } catch {
       return []
     }
@@ -143,7 +139,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('anju_wishlist')
-      return saved ? JSON.parse(saved) : ['prod-1', 'prod-3']
+      return saved ? JSON.parse(saved) : []
     } catch {
       return []
     }
@@ -229,12 +225,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         } else {
           navigate('/all-products')
         }
-        break
+        break;
       case 'bestsellers':
         navigate('/bestsellers')
         break
       case 'product-detail':
-        navigate(`/product/${productId || selectedProductId || PRODUCTS[0].id}`)
+        if (productId || selectedProductId) {
+          navigate(`/product/${encodeURIComponent(productId || selectedProductId || '')}`)
+        } else {
+          navigate('/all-products')
+        }
         break
       case 'contact':
         navigate('/contact')
@@ -257,26 +257,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       default:
         navigate('/')
     }
-
   }
 
-  const addToCart = (product: Product, selectedSize?: string, quantity: number = 1, selectedColor?: string) => {
-    const size = selectedSize || product.sizes?.[0] || 'Standard'
-    const color = selectedColor || product.colors?.[0]
+  const addToCart = (product: Product, selectedSize?: string, quantity = 1, selectedColor?: string) => {
+    const size = selectedSize || product.sizes?.[0] || 'Free Size'
+    const color = selectedColor || product.colors?.[0] || ''
+
     setCart(prev => {
       const existingIndex = prev.findIndex(
-        item => item.product.id === product.id && item.selectedSize === size && item.selectedColor === color
+        item => item.product.id === product.id && item.selectedSize === size && (color ? item.selectedColor === color : true)
       )
+
       if (existingIndex > -1) {
-        const next = [...prev]
-        next[existingIndex] = {
-          ...next[existingIndex],
-          quantity: next[existingIndex].quantity + quantity
-        }
-        return next
+        const updated = [...prev]
+        updated[existingIndex].quantity += quantity
+        return updated
+      } else {
+        return [...prev, { product, quantity, selectedSize: size, selectedColor: color }]
       }
-      return [...prev, { product, quantity, selectedSize: size, selectedColor: color }]
     })
+
+    setIsWishlistOpen(false)
     setIsCartOpen(true)
   }
 
@@ -386,10 +387,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return { ok: true }
   }
 
-  const selectedProduct = selectedProductId
-    ? PRODUCTS.find(p => p.id === selectedProductId)
-    : undefined
-
   return (
     <ShopContext.Provider
       value={{
@@ -425,7 +422,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         closeWishlist,
         quickViewProduct,
         setQuickViewProduct,
-        selectedProduct,
+        selectedProduct: undefined,
         shippingSettings,
         refreshShippingSettings,
       }}

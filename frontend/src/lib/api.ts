@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { Product } from '../types'
-import { PRODUCTS } from '../data/products'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
 
@@ -44,7 +43,7 @@ export function mapApiProduct(p: ApiProduct): Product {
     price: p.price,
     originalPrice: p.comparePrice ?? p.price,
     category: p.category ?? '',
-    categorySlug: '',
+    categorySlug: p.category ? p.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : '',
     img: p.images[0]?.url ?? '',
     tag: isBestseller ? 'BESTSELLER' : isNewArrival ? 'NEW' : isSale ? 'SALE' : '',
     discount: p.discountPercent > 0 ? `-${p.discountPercent}%` : '',
@@ -109,6 +108,51 @@ export function useCategories() {
   return { categories, loading }
 }
 
+import type { FilterFacets, FacetOption } from '../utils/productFilters'
+export type { FilterFacets, FacetOption }
+
+export async function fetchFacets(): Promise<FilterFacets> {
+  const res = await fetch(`${API_URL}/api/facets`)
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  const data: FilterFacets = await res.json()
+  return data
+}
+
+export function useFacets() {
+  const [facets, setFacets] = useState<FilterFacets>({
+    categories: [],
+    sizes: [],
+    colors: [],
+    fabrics: [],
+    occasions: [],
+    vendors: [],
+    price: { min: 700, max: 3500, step: 50 },
+    priceRange: { min: 700, max: 3500 },
+    stock: { inStock: 0, outOfStock: 0 },
+    total: 0,
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchFacets()
+      .then((f) => {
+        if (!cancelled) setFacets(f)
+      })
+      .catch((err) => {
+        console.error('Error loading facets:', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { facets, loading }
+}
+
 export function useNewArrivals(limit = 8) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,9 +161,9 @@ export function useNewArrivals(limit = 8) {
     let cancelled = false
     fetchNewArrivals(limit)
       .then((p) => !cancelled && setProducts(p))
-      .catch(() => {
-        // API down: fall back to the static data so the page never looks empty
-        if (!cancelled) setProducts(PRODUCTS.filter((p) => p.isNewArrival).slice(0, limit))
+      .catch((err) => {
+        console.error('Error loading new arrivals:', err)
+        if (!cancelled) setProducts([])
       })
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -153,8 +197,9 @@ export function useBestsellers(limit = 8) {
     let cancelled = false
     fetchBestsellers(limit)
       .then((p) => !cancelled && setProducts(p))
-      .catch(() => {
-        if (!cancelled) setProducts(PRODUCTS.filter((p) => p.isBestseller).slice(0, limit))
+      .catch((err) => {
+        console.error('Error loading bestsellers:', err)
+        if (!cancelled) setProducts([])
       })
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -180,8 +225,9 @@ export function useSaleProducts(limit = 8) {
     let cancelled = false
     fetchSaleProducts(limit)
       .then((p) => !cancelled && setProducts(p))
-      .catch(() => {
-        if (!cancelled) setProducts(PRODUCTS.filter((p) => p.isSale).slice(0, limit))
+      .catch((err) => {
+        console.error('Error loading sale products:', err)
+        if (!cancelled) setProducts([])
       })
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -196,21 +242,38 @@ export const useMegaSale = useSaleProducts
 export const useSale = useSaleProducts
 
 export interface ProductsResponse {
+  items: Product[]
   products: Product[]
   total: number
   page: number
   limit: number
   totalPages: number
+  facets: FilterFacets
+  exactMatch: boolean
+  similar: Product[]
 }
 
 export interface ProductsQueryOptions {
   page?: number
   limit?: number
   category?: string
+  collection?: string
+  sizes?: string[]
+  size?: string[]
+  colors?: string[]
+  color?: string[]
+  fabrics?: string[]
+  fabric?: string[]
+  occasions?: string[]
+  occasion?: string[]
+  stock?: string | null
+  inStock?: boolean | string | null
+  q?: string
   search?: string
   sort?: string
   minPrice?: number | null
   maxPrice?: number | null
+  signal?: AbortSignal
 }
 
 export async function fetchProducts(options: ProductsQueryOptions = {}): Promise<ProductsResponse> {
@@ -218,26 +281,79 @@ export async function fetchProducts(options: ProductsQueryOptions = {}): Promise
   if (options.page) params.set('page', String(options.page))
   if (options.limit) params.set('limit', String(options.limit))
   if (options.category && options.category !== 'all') params.set('category', options.category)
-  if (options.search) params.set('search', options.search)
+  if (options.collection) params.set('collection', options.collection)
+  
+  const sizeArr = options.sizes || options.size || []
+  if (sizeArr.length > 0) params.set('size', sizeArr.join(','))
+
+  const colorArr = options.colors || options.color || []
+  if (colorArr.length > 0) params.set('color', colorArr.join(','))
+
+  const fabricArr = options.fabrics || options.fabric || []
+  if (fabricArr.length > 0) params.set('fabric', fabricArr.join(','))
+
+  const occasionArr = options.occasions || options.occasion || []
+  if (occasionArr.length > 0) params.set('occasion', occasionArr.join(','))
+
+  if (options.inStock !== undefined && options.inStock !== null && options.inStock !== '') {
+    params.set('inStock', String(options.inStock))
+  } else if (options.stock) {
+    params.set('inStock', options.stock === 'in-stock' ? 'true' : 'false')
+  }
+
+  const queryText = options.q || options.search
+  if (queryText) params.set('q', queryText)
+
   if (options.sort) params.set('sort', options.sort)
   if (options.minPrice !== undefined && options.minPrice !== null) params.set('minPrice', String(options.minPrice))
   if (options.maxPrice !== undefined && options.maxPrice !== null) params.set('maxPrice', String(options.maxPrice))
 
   const qs = params.toString()
-  const res = await fetch(`${API_URL}/api/products${qs ? `?${qs}` : ''}`)
+  const res = await fetch(`${API_URL}/api/products${qs ? `?${qs}` : ''}`, {
+    signal: options.signal,
+  })
   if (!res.ok) throw new Error(`API error ${res.status}`)
-  const data: { products: ApiProduct[]; total: number; page: number; limit: number; totalPages: number } = await res.json()
+  const data: {
+    items?: ApiProduct[]
+    products?: ApiProduct[]
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+    facets?: FilterFacets
+    exactMatch?: boolean
+    similar?: ApiProduct[]
+  } = await res.json()
+
+  const rawItems = data.items || data.products || []
+  const items = rawItems.map(mapApiProduct)
+  const rawSimilar = data.similar || []
+  const similar = rawSimilar.map(mapApiProduct)
+
   return {
-    products: data.products.map(mapApiProduct),
-    total: data.total,
-    page: data.page,
-    limit: data.limit,
-    totalPages: data.totalPages,
+    items,
+    products: items,
+    total: data.total ?? items.length,
+    page: data.page ?? 1,
+    limit: data.limit ?? 12,
+    totalPages: data.totalPages ?? 1,
+    facets: data.facets || {
+      categories: [],
+      sizes: [],
+      colors: [],
+      fabrics: [],
+      occasions: [],
+      vendors: [],
+      priceRange: { min: 700, max: 3500 },
+      stock: { inStock: 0, outOfStock: 0 },
+      total: data.total ?? 0,
+    },
+    exactMatch: data.exactMatch !== false,
+    similar,
   }
 }
+
 // Converts Shopify's stored HTML into safe, readable plain text.
-// Deliberately never uses dangerouslySetInnerHTML — stripping tags removes
-// any injection risk instead of relying on a sanitizer library.
 function stripHtml(html: string | null): string {
   if (!html) return ''
   return html
@@ -266,10 +382,10 @@ function mapApiProductDetail(p: ApiProductDetail): Product {
     price: p.price,
     originalPrice: p.comparePrice ?? p.price,
     category: p.category ?? '',
-    categorySlug: '',
+    categorySlug: p.category ? p.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : '',
     img: images[0] ?? '',
     additionalImages: images.slice(1),
-    tag: p.isNewArrival ? 'NEW' : p.isSale ? 'SALE' : '',
+    tag: p.isBestseller ? 'BESTSELLER' : p.isNewArrival ? 'NEW' : p.isSale ? 'SALE' : '',
     discount: p.discountPercent > 0 ? `-${p.discountPercent}%` : '',
     rating: undefined,
     reviewCount: undefined,
@@ -351,14 +467,7 @@ export function useProduct(handle: string | undefined) {
       })
       .catch(() => {
         if (!cancelled) {
-          const fallback = PRODUCTS.find(
-            (p) => p.id === handle || p.id.toLowerCase() === handle.toLowerCase()
-          )
-          if (fallback) {
-            setProduct(fallback)
-          } else {
-            setNotFound(true)
-          }
+          setNotFound(true)
         }
       })
       .finally(() => {
@@ -371,7 +480,6 @@ export function useProduct(handle: string | undefined) {
 
   return { product, loading, notFound }
 }
-
 
 export interface OrderTimelineEvent {
   status: string
@@ -540,7 +648,7 @@ export async function fetchUserOrders(userIdOrEmail: string, token?: string | nu
   }
 }
 
-export async function trackOrder(orderNumber: string, verify?: string): Promise<Order> {
+export async function trackOrder(orderNumber: string, _verify?: string): Promise<Order> {
   const url = `${API_URL}/api/orders/${encodeURIComponent(orderNumber)}`
   const res = await fetch(url)
   if (!res.ok) {
@@ -563,4 +671,4 @@ export async function cancelOrder(orderNumber: string, reason?: string): Promise
   }
   const data: { order: Order } = await res.json()
   return data.order
-}
+}

@@ -66,6 +66,8 @@ model Products {
   createdAt       Timestamptz       @default(now())
   descriptionHtml String?
   fabric          String?
+  occasion        String?
+  status          String?           @default("active")
   handle          String            @unique(map: "products_handle_key")
   isBestseller    Boolean           @default(false)
   isNewArrival    Boolean           @default(false)
@@ -78,8 +80,14 @@ model Products {
   productReviews  ProductReviews[]
   productVariants ProductVariants[]
 
+  @@index([category], map: "idx_products_category")
+  @@index([price], map: "idx_products_price")
+  @@index([createdAt], map: "idx_products_created_at")
+  @@index([status], map: "idx_products_status")
+  @@index([occasion], map: "idx_products_occasion")
   @@index([isBestseller, createdAt], map: "idx_products_bestseller_created")
   @@index([isSale, createdAt], map: "idx_products_sale_created")
+  @@index([isNewArrival, createdAt], map: "idx_products_is_new_arrival")
   @@map("products")
 }
 
@@ -97,6 +105,7 @@ model ProductVariants {
   product        Products     @relation(fields: [productId], references: [id], map: "product_variants_productId_fkey")
 
   @@index([productId], name: "product_variants_productId_idx")
+  @@index([stock], map: "idx_product_variants_stock")
   @@map("product_variants")
 }
 

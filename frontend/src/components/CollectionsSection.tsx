@@ -1,67 +1,26 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCategories } from '../lib/api'
+import { useCategories, type ApiCategory } from '../lib/api'
 import { MobileSlider } from './MobileSlider'
 import { CardCornerFlorals } from './CardCornerFlorals'
 
 /**
- * High-resolution full-length ethnic wear photography from the store database
- * Perfectly paired with each dress category type.
+ * Fallback curated imagery if a category has no image yet
  */
-const CATEGORY_ITEMS: {
-  id: string
-  name: string
-  slug: string
-  imageUrl: string
-  linkTo: string
-}[] = [
-  {
-    id: 'anarkali-sets',
-    name: 'Anarkali Sets',
-    slug: 'anarkali-sets',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932',
-    linkTo: '/all-products?category=Anarkali%20Sets',
-  },
-  {
-    id: 'sarees',
-    name: 'Sarees',
-    slug: 'sarees',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/2927D7AB-CC1A-44E0-B09A-B6380F53BA1A.png?v=1789195260',
-    linkTo: '/all-products?category=Saris',
-  },
-  {
-    id: 'kurta-sets',
-    name: 'Kurta Sets',
-    slug: 'kurta-sets',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/A8835CE6-1489-403A-BFE0-2A4D9D09ECE7.png?v=1783761445',
-    linkTo: '/all-products?category=Kurtas%20%26%20Kurta%20Sets',
-  },
-  {
-    id: 'sharara-sets',
-    name: 'Sharara Sets',
-    slug: 'sharara-sets',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/196A1AC2-315D-4803-991A-71A5A856782F.jpg?v=1783925338',
-    linkTo: '/all-products?category=Salwar%20Kameez%20%26%20Suit%20Sets',
-  },
-  {
-    id: 'palazzo-sets',
-    name: 'Palazzo Sets',
-    slug: 'palazzo-sets',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/9F419097-C5B2-415F-9E18-2CA4156622DB.png?v=1789564514',
-    linkTo: '/all-products?category=Salwar%20Kameez%20%26%20Suit%20Sets',
-  },
-  {
-    id: 'new-arrivals',
-    name: 'New Arrivals',
-    slug: 'new-arrivals',
-    imageUrl: 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/463CF62D-507B-4220-853E-6D7708DB3FB9.png?v=1789114671',
-    linkTo: '/all-products?sort=newest',
-  },
-]
+const FALLBACK_CATEGORY_IMAGES: Record<string, string> = {
+  'anarkali-sets': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932',
+  'sarees': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/2927D7AB-CC1A-44E0-B09A-B6380F53BA1A.png?v=1789195260',
+  'sharara-sets': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/196A1AC2-315D-4803-991A-71A5A856782F.jpg?v=1783925338',
+  'palazzo-sets': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/9F419097-C5B2-415F-9E18-2CA4156622DB.png?v=1789564514',
+  'salwar-suits': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/463CF62D-507B-4220-853E-6D7708DB3FB9.png?v=1789114671',
+  'gown-sets': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/A8835CE6-1489-403A-BFE0-2A4D9D09ECE7.png?v=1783761445',
+  'lehengas': 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932',
+}
+
+const DEFAULT_ARCH_IMG = 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932'
 
 /**
  * Lotus crest that sits on the top edge of the header plaque.
- * Three petals + a base line, drawn in the site's gold.
  */
 function LotusCrest() {
   return (
@@ -122,8 +81,7 @@ function LotusCrest() {
 }
 
 /**
- * Gold rule that sits beside the heading: a fading line ending in a diamond
- * next to the title. Mirrored for the right side.
+ * Gold rule that sits beside the heading
  */
 function SideRule({ side }: { side: 'left' | 'right' }) {
   const isLeft = side === 'left'
@@ -146,19 +104,19 @@ function SideRule({ side }: { side: 'left' | 'right' }) {
 }
 
 /**
- * Single Arched Collection Card
+ * Single Arched Collection Card wired to real database category
  */
-function CollectionArchCard({ item }: { item: typeof CATEGORY_ITEMS[0] }) {
-  const [imgSrc, setImgSrc] = useState(item.imageUrl)
+function CollectionArchCard({ category }: { category: ApiCategory }) {
+  const initialImg = category.imageUrl || FALLBACK_CATEGORY_IMAGES[category.slug] || DEFAULT_ARCH_IMG
+  const [imgSrc, setImgSrc] = useState(initialImg)
 
   return (
     <Link
-      to={item.linkTo}
-      className="group relative flex flex-col w-full focus:outline-hidden focus:ring-2 focus:ring-[#c9973a]/70 rounded-t-[100px] sm:rounded-t-[120px] md:rounded-t-[140px] transition-all duration-300 transform group-hover:-translate-y-2 select-none"
+      to={`/category/${encodeURIComponent(category.slug)}`}
+      className="group relative flex flex-col w-full focus:outline-hidden focus:ring-2 focus:ring-[#c9973a]/70 rounded-t-[100px] sm:rounded-t-[120px] md:rounded-t-[140px] transition-all duration-300 transform group-hover:-translate-y-2 select-none cursor-pointer"
     >
       {/* 
         Outer Arched Card with Metallic Golden Double Rim & Shadow
-        Taller vertical aspect ratio (aspect-[1/2.02]) so model is completely uncropped
       */}
       <div className="relative w-full rounded-t-[100px] sm:rounded-t-[120px] md:rounded-t-[140px] rounded-b-2xl p-[3px] bg-gradient-to-b from-[#eec975] via-[#c9973a] to-[#9e701e] shadow-[0_10px_28px_rgba(184,134,40,0.22)] group-hover:shadow-[0_18px_42px_rgba(184,134,40,0.36)] transition-all duration-300">
         
@@ -169,9 +127,9 @@ function CollectionArchCard({ item }: { item: typeof CATEGORY_ITEMS[0] }) {
           <div className="relative w-full aspect-[1/2.02] sm:aspect-[1/2.06] overflow-hidden bg-[#faf5ee]">
             <img
               src={imgSrc}
-              alt={`${item.name} Ethnic Wear Collection`}
+              alt={`${category.name} Ethnic Wear Collection`}
               loading="lazy"
-              onError={() => setImgSrc(CATEGORY_ITEMS[0].imageUrl)}
+              onError={() => setImgSrc(DEFAULT_ARCH_IMG)}
               className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
             />
 
@@ -181,7 +139,6 @@ function CollectionArchCard({ item }: { item: typeof CATEGORY_ITEMS[0] }) {
 
           {/* 
             Overlapping Bottom Badge with Lotus Tab Notch
-            Positioned at the very bottom so 75%-80% of model image is completely unobstructed!
           */}
           <div className="absolute inset-x-2 sm:inset-x-2.5 bottom-2 sm:bottom-2.5 z-10">
             
@@ -197,12 +154,12 @@ function CollectionArchCard({ item }: { item: typeof CATEGORY_ITEMS[0] }) {
             {/* Main Badge Container */}
             <div className="relative bg-[#fffaf1] border border-[#d4af37]/70 rounded-2xl sm:rounded-3xl pt-1.5 sm:pt-2 pb-2.5 sm:pb-3 px-2 text-center shadow-md shadow-black/10 group-hover:border-[#c9973a] transition-all duration-300">
               
-              {/* Category Name in Rich Dark Olive Green Serif */}
+              {/* Category Name */}
               <h3 className="font-serif font-bold text-xs sm:text-sm md:text-[0.95rem] text-[#3e502a] tracking-tight leading-snug line-clamp-1 mb-1.5 pt-0.5">
-                {item.name}
+                {category.name}
               </h3>
 
-              {/* Pill "Shop Now →" Button in Rich Dark Olive Green */}
+              {/* Pill "Shop Now →" Button */}
               <div className="flex justify-center items-center">
                 <span className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-1 min-h-[30px] sm:min-h-[32px] rounded-full bg-gradient-to-b from-[#5c7340] to-[#41542a] text-white text-[10px] sm:text-[11px] font-serif font-medium tracking-wide shadow-xs group-hover:from-[#4d6134] group-hover:to-[#33421f] transition-all duration-200">
                   <span>Shop Now</span>
@@ -215,9 +172,7 @@ function CollectionArchCard({ item }: { item: typeof CATEGORY_ITEMS[0] }) {
           </div>
         </div>
 
-        {/* 
-          Royal 24K Gold Filigree Scrollwork on outer corners
-        */}
+        {/* Filigree Scrollwork */}
         <CardCornerFlorals />
       </div>
     </Link>
@@ -246,9 +201,11 @@ function CollectionsSkeleton() {
 }
 
 export function CollectionsSection() {
-  const { loading } = useCategories()
+  const { categories, loading } = useCategories()
 
-  // 1. Loading State
+  // Display top 6 collections on home page slider
+  const displayedCategories = categories.slice(0, 6)
+
   if (loading) {
     return (
       <section
@@ -260,17 +217,14 @@ export function CollectionsSection() {
           <div className="flex flex-col items-center text-center">
             <LotusCrest />
 
-            {/* Heading with gold rules on both sides */}
             <div className="mt-2 flex items-center w-full max-w-2xl gap-3 sm:gap-5">
               <SideRule side="left" />
-
               <h2
                 id="collections-heading"
                 className="shrink-0 font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#3e502a] tracking-wide leading-tight"
               >
                 Explore Our Collections
               </h2>
-
               <SideRule side="right" />
             </div>
 
@@ -282,6 +236,10 @@ export function CollectionsSection() {
         <CollectionsSkeleton />
       </section>
     )
+  }
+
+  if (displayedCategories.length === 0) {
+    return null
   }
 
   return (
@@ -330,14 +288,14 @@ export function CollectionsSection() {
           - Mobile (<768px): MobileSlider with ~2.2 cards visible
         */}
         <MobileSlider
-          itemCount={CATEGORY_ITEMS.length}
+          itemCount={displayedCategories.length}
           desktopGridClassName="md:grid-cols-3 lg:grid-cols-6"
           showDesktopArrows={false}
           indicatorType="bar"
           gapClassName="gap-3.5 sm:gap-4 md:gap-5"
         >
-          {CATEGORY_ITEMS.map((item) => (
-            <CollectionArchCard key={item.id} item={item} />
+          {displayedCategories.map((cat) => (
+            <CollectionArchCard key={cat.slug} category={cat} />
           ))}
         </MobileSlider>
       </div>

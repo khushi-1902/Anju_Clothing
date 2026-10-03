@@ -122,7 +122,7 @@ function RoyalSaleSectionHeader() {
       {/* Desktop "View All" pill, positioned beside the heading */}
       <div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2">
         <Link
-          to="/all-products"
+          to="/mega-sale"
           className="group inline-flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-b from-[#5c7340] to-[#3e502a] text-white text-sm font-serif font-medium tracking-wide shadow-sm border border-[#c49332]/40 hover:from-[#4d6134] hover:to-[#33421f] hover:shadow-md hover:border-[#c49332] transition-all duration-200 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#5c7340]/60 min-h-[44px]"
         >
           <span>View All</span>
@@ -362,7 +362,7 @@ export function SaleSection() {
         {/* View All button for screens narrower than lg */}
         <div className="lg:hidden text-center mt-5 sm:mt-6">
           <Link
-            to="/all-products"
+            to="/mega-sale"
             className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-gradient-to-b from-[#5c7340] to-[#3e502a] text-white text-xs font-serif font-bold uppercase tracking-wider shadow-sm border border-[#c49332]/40 active:scale-95 transition-all min-h-[44px]"
           >
             <span>View All Sale Items</span>
