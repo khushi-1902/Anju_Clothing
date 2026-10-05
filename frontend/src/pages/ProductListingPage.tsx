@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { ProductCard } from '../components/ProductCard'
-import { FilterDrawer, FilterIcon } from '../components/FilterDrawer'
-import { FilterControls } from '../components/FilterControls'
+import { FilterDrawer } from '../components/FilterDrawer'
+import { HorizontalFilterBar } from '../components/HorizontalFilterBar'
 import { fetchProducts } from '../lib/api'
 import type { Product } from '../types'
 import {
@@ -288,41 +288,21 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
     return list
   }, [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, categoryName])
 
-  // Heading and Subheading
-  const { heading, subheading, badge } = useMemo(() => {
+  // Heading
+  const heading = useMemo(() => {
     if (isCategoryMode) {
-      return {
-        badge: 'Handcrafted Heritage',
-        heading: categoryName || 'Category Collection',
-        subheading: `Authentic handcrafted ${categoryName || 'ethnic wear'} curated with timeless Indian craftsmanship.`,
-      }
+      return categoryName || 'Category Collection'
     }
     if (isNewArrivalsMode) {
-      return {
-        badge: '⭐ Fresh Season Drops',
-        heading: 'New Arrivals',
-        subheading: 'Fresh festive silhouettes & royal ethnic designs newly added to our bridal and party collections.',
-      }
+      return 'New Arrivals'
     }
     if (isMegaSaleMode) {
-      return {
-        badge: '🔥 Limited Time Savings',
-        heading: 'Mega Sale Collection',
-        subheading: 'Exclusive festive offers up to 50% off on luxury suits, anarkalis, and sarees — while stocks last.',
-      }
+      return 'Mega Sale'
     }
     if (isBestsellersMode) {
-      return {
-        badge: '👑 Most Celebrated Outfits',
-        heading: 'Shop Bestsellers',
-        subheading: 'Our most celebrated creations, loved by thousands of happy customers across the globe.',
-      }
+      return 'Best Sellers'
     }
-    return {
-      badge: 'Luxury Ethnic Wear',
-      heading: 'All Products & Outfits',
-      subheading: 'Explore our complete catalog of handcrafted lehengas, anarkalis, sarees, shararas, and festive sets.',
-    }
+    return 'All Products'
   }, [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, categoryName])
 
   const chips = useMemo(
@@ -348,11 +328,11 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
   )
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] py-6 sm:py-10">
+    <div className="min-h-screen bg-[#faf8f5] py-4 sm:py-6">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumb" className="mb-4 sm:mb-6">
+        <nav aria-label="Breadcrumb" className="mb-3 sm:mb-4">
           <ol className="flex items-center space-x-2 text-xs text-stone-500 font-medium">
             {breadcrumbs.map((item, idx) => {
               const isLast = idx === breadcrumbs.length - 1
@@ -372,17 +352,16 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
           </ol>
         </nav>
 
-        {/* Page Banner Header */}
-        <div className="mb-6 sm:mb-8 border-b border-stone-200/80 pb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3e502a]/10 border border-[#3e502a]/20 text-[#3e502a] text-[11px] font-serif font-bold uppercase tracking-wider mb-2.5">
-            {badge}
-          </div>
-          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#2c2420]">
+        {/* Attractive Compact Page Header */}
+        <div className="mb-5 sm:mb-6 text-center">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-[#2c2420] tracking-tight">
             {heading}
           </h1>
-          <p className="mt-2 text-xs sm:text-sm text-stone-600 font-serif max-w-2xl leading-relaxed">
-            {subheading}
-          </p>
+          <div className="flex items-center justify-center gap-2 mt-2.5" aria-hidden="true">
+            <span className="h-px w-8 sm:w-14 bg-gradient-to-r from-transparent to-[#c9973a]/70" />
+            <span className="w-1.5 h-1.5 rotate-45 border border-[#c9973a] bg-[#c9973a]/30" />
+            <span className="h-px w-8 sm:w-14 bg-gradient-to-l from-transparent to-[#c9973a]/70" />
+          </div>
         </div>
 
         {/* Category Not Found State */}
@@ -404,99 +383,35 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
             </Link>
           </div>
         ) : (
-          /* Main Layout: Desktop Sidebar + Product Grid */
-          <div className="lg:grid lg:grid-cols-4 lg:gap-8 xl:gap-10">
-            
-            {/* Desktop Sticky Filter Sidebar */}
-            <aside className="hidden lg:block lg:col-span-1">
-              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-3 rounded-2xl bg-white p-5 border border-stone-200/90 shadow-xs">
-                <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-serif text-base font-bold uppercase tracking-wider text-[#3e502a]">
-                      Filters
-                    </span>
-                    {activeCount > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#3e502a] px-1.5 text-[10px] font-bold text-white">
-                        {activeCount}
-                      </span>
-                    )}
-                  </div>
-                  {activeCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="text-[11px] font-semibold text-[#3e502a] hover:underline cursor-pointer"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
+          /* Main Section: Horizontal Filters + Results Count / Chips + Full-width Product Grid */
+          <div>
+            {/* Modern Horizontal Filter Bar */}
+            <HorizontalFilterBar
+              filters={filters}
+              onChange={handleFilterChange}
+              facets={facets}
+              activeCount={activeCount}
+              onOpenDrawer={() => setIsFilterOpen(true)}
+              onClearAll={clearAllFilters}
+              sortBy={sortBy}
+              onSortChange={handleSortChange}
+              hideCategory={isCategoryMode}
+            />
 
-                <FilterControls
-                  filters={filters}
-                  onChange={handleFilterChange}
-                  facets={facets}
-                  hideCategory={isCategoryMode}
-                />
-              </div>
-            </aside>
-
-            {/* Right Main Column: Toolbar + Chips + Grid + Pagination */}
-            <section className="lg:col-span-3">
-              
-              {/* Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 bg-white p-3 sm:p-4 rounded-xl border mb-4 shadow-2xs">
-                {/* Mobile Filter Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsFilterOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={isFilterOpen}
-                  className="lg:hidden inline-flex items-center gap-2 h-9 px-3.5 border border-stone-300 bg-[#faf8f5] text-[#2c2420] text-xs font-bold uppercase tracking-wider hover:bg-stone-100 rounded-xs transition-colors cursor-pointer"
-                >
-                  <FilterIcon className="w-4 h-4 text-[#3e502a]" />
-                  <span>Filters</span>
-                  {activeCount > 0 && (
-                    <span className="min-w-5 h-5 px-1 rounded-full bg-[#3e502a] text-white text-[10px] font-bold flex items-center justify-center">
-                      {activeCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Visible Results Count text */}
-                <div className="text-xs text-stone-600 font-medium" aria-live="polite">
-                  {!loading && totalCount > 0 && (
-                    <span>
-                      Showing <strong>{startItem}-{endItem}</strong> of <strong>{totalCount}</strong> outfits
-                    </span>
-                  )}
-                </div>
-
-                {/* Sort Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label htmlFor="sort-dropdown" className="text-xs text-stone-500 font-medium whitespace-nowrap">
-                    Sort by:
-                  </label>
-                  <select
-                    id="sort-dropdown"
-                    value={sortBy}
-                    onChange={e => handleSortChange(e.target.value)}
-                    aria-label="Sort products"
-                    className="h-9 bg-[#faf8f5] border border-stone-300 text-[#2c2420] text-xs font-semibold px-2.5 rounded-xs focus:outline-hidden focus:border-[#3e502a] cursor-pointer"
-                  >
-                    <option value="featured">Featured Collection</option>
-                    <option value="newest">Newest First</option>
-                    <option value="popularity">Most Popular / Bestsellers</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="discount">Highest Discount</option>
-                  </select>
-                </div>
+            {/* Results Count & Active Filter Chips Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              {/* Visible Results Count */}
+              <div className="text-xs text-stone-600 font-medium" aria-live="polite">
+                {!loading && totalCount > 0 && (
+                  <span>
+                    Showing <strong>{startItem}–{endItem}</strong> of <strong>{totalCount}</strong> products
+                  </span>
+                )}
               </div>
 
               {/* Active Filter Chips */}
               {chips.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-[11px] font-medium text-stone-500 mr-1">Active:</span>
                   {chips.map(chip => (
                     <span
@@ -523,160 +438,160 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
                   </button>
                 </div>
               )}
+            </div>
 
-              {/* Keyword Search Reminder */}
-              {filters.title && (
-                <div className="mb-4 flex items-center justify-between bg-white p-3 rounded-lg border border-stone-200">
-                  <span className="text-xs text-stone-700">
-                    Results for keyword: <strong>"{filters.title}"</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterChange({ ...filters, title: '' })}
-                    className="text-xs text-[#3e502a] font-semibold underline cursor-pointer"
-                  >
-                    Clear Search
-                  </button>
-                </div>
-              )}
-
-              {/* Error State with Retry Button */}
-              {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50/80 p-6 text-center my-6">
-                  <p className="text-sm font-semibold text-red-800 mb-3">{error}</p>
-                  <button
-                    type="button"
-                    onClick={loadData}
-                    className="px-5 py-2 bg-[#3e502a] text-white text-xs font-bold uppercase tracking-wider rounded-xs hover:bg-[#324122] transition-colors cursor-pointer"
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-
-              {/* Loading Skeletons */}
-              {loading && (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="animate-pulse flex flex-col bg-white rounded-2xl p-3 border border-stone-200/80"
-                    >
-                      <div className="rounded-xl bg-stone-200/70 aspect-[2/3] w-full" />
-                      <div className="pt-3 space-y-2">
-                        <div className="h-3 bg-stone-200 rounded w-1/3" />
-                        <div className="h-4 bg-stone-200 rounded w-3/4" />
-                        <div className="h-4 bg-stone-200 rounded w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* No Exact Matches Warning & Fallback */}
-              {!loading && !exactMatch && similarProducts.length > 0 && (
-                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-amber-900">
-                  <p className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 mb-1">
-                    <span>⚠️</span> No exact matches found for your selected filters
-                  </p>
-                  <p className="text-xs text-amber-800">
-                    We've curated similar handcrafted styles you may love from our collection:
-                  </p>
-                </div>
-              )}
-
-              {/* Product Grid */}
-              {!loading && !error && (
-                <>
-                  {productsList.length === 0 && similarProducts.length === 0 ? (
-                    <div className="rounded-2xl border border-stone-200 bg-white p-8 sm:p-14 text-center my-6">
-                      <div className="text-4xl mb-3">🔍</div>
-                      <h3 className="font-serif text-lg sm:text-xl font-bold text-[#2c2420] mb-2">
-                        No outfits found
-                      </h3>
-                      <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto mb-5">
-                        Try adjusting your filters, selecting fewer options, or clearing your search.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={clearAllFilters}
-                        className="px-6 py-2.5 bg-[#3e502a] text-white text-xs font-serif font-bold uppercase tracking-wider rounded-xs hover:bg-[#324122] transition-colors cursor-pointer"
-                      >
-                        Reset All Filters
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
-                      {(exactMatch ? productsList : similarProducts).map(product => (
-                        <ProductCard key={product.id} product={product} />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Pagination Bar */}
-              {!loading && totalPagesCount > 1 && (
-                <nav
-                  role="navigation"
-                  aria-label="Pagination"
-                  className="mt-12 pt-6 border-t border-stone-200 flex items-center justify-center gap-1.5 sm:gap-2"
+            {/* Keyword Search Reminder */}
+            {filters.title && (
+              <div className="mb-4 flex items-center justify-between bg-white p-3 rounded-lg border border-stone-200">
+                <span className="text-xs text-stone-700">
+                  Results for keyword: <strong>"{filters.title}"</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange({ ...filters, title: '' })}
+                  className="text-xs text-[#3e502a] font-semibold underline cursor-pointer"
                 >
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
-                    aria-label="Previous page"
-                  >
-                    ← Prev
-                  </button>
+                  Clear Search
+                </button>
+              </div>
+            )}
 
-                  <div className="flex items-center gap-1">
-                    {paginationPages.map((item, idx) => {
-                      if (item === '...') {
-                        return (
-                          <span
-                            key={`dots-${idx}`}
-                            className="w-8 h-8 flex items-center justify-center text-xs text-stone-400 select-none"
-                          >
-                            ...
-                          </span>
-                        )
-                      }
-                      const pageNum = item as number
-                      const isActive = currentPage === pageNum
-                      return (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          onClick={() => handlePageChange(pageNum)}
-                          aria-current={isActive ? 'page' : undefined}
-                          aria-label={`Page ${pageNum}`}
-                          className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xs font-bold rounded-xs transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-[#3e502a] text-white shadow-xs'
-                              : 'text-stone-700 bg-white border border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
+            {/* Error State with Retry Button */}
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50/80 p-6 text-center my-6">
+                <p className="text-sm font-semibold text-red-800 mb-3">{error}</p>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="px-5 py-2 bg-[#3e502a] text-white text-xs font-bold uppercase tracking-wider rounded-xs hover:bg-[#324122] transition-colors cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Loading Skeletons */}
+            {loading && (
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse flex flex-col bg-white rounded-2xl p-3 border border-stone-200/80"
+                  >
+                    <div className="rounded-xl bg-stone-200/70 aspect-[2/3] w-full" />
+                    <div className="pt-3 space-y-2">
+                      <div className="h-3 bg-stone-200 rounded w-1/3" />
+                      <div className="h-4 bg-stone-200 rounded w-3/4" />
+                      <div className="h-4 bg-stone-200 rounded w-1/2" />
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
 
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPagesCount}
-                    className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
-                    aria-label="Next page"
-                  >
-                    Next →
-                  </button>
-                </nav>
-              )}
-            </section>
+            {/* No Exact Matches Warning & Fallback */}
+            {!loading && !exactMatch && similarProducts.length > 0 && (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-amber-900">
+                <p className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 mb-1">
+                  <span>⚠️</span> No exact matches found for your selected filters
+                </p>
+                <p className="text-xs text-amber-800">
+                  We've curated similar handcrafted styles you may love from our collection:
+                </p>
+              </div>
+            )}
+
+            {/* Product Grid */}
+            {!loading && !error && (
+              <>
+                {productsList.length === 0 && similarProducts.length === 0 ? (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-8 sm:p-14 text-center my-6">
+                    <div className="text-4xl mb-3">🔍</div>
+                    <h3 className="font-serif text-lg sm:text-xl font-bold text-[#2c2420] mb-2">
+                      No outfits found
+                    </h3>
+                    <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto mb-5">
+                      Try adjusting your filters, selecting fewer options, or clearing your search.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="px-6 py-2.5 bg-[#3e502a] text-white text-xs font-serif font-bold uppercase tracking-wider rounded-xs hover:bg-[#324122] transition-colors cursor-pointer"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+                    {(exactMatch ? productsList : similarProducts).map(product => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Pagination Bar */}
+            {!loading && totalPagesCount > 1 && (
+              <nav
+                role="navigation"
+                aria-label="Pagination"
+                className="mt-12 pt-6 border-t border-stone-200 flex items-center justify-center gap-1.5 sm:gap-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  ← Prev
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {paginationPages.map((item, idx) => {
+                    if (item === '...') {
+                      return (
+                        <span
+                          key={`dots-${idx}`}
+                          className="w-8 h-8 flex items-center justify-center text-xs text-stone-400 select-none"
+                        >
+                          ...
+                        </span>
+                      )
+                    }
+                    const pageNum = item as number
+                    const isActive = currentPage === pageNum
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => handlePageChange(pageNum)}
+                        aria-current={isActive ? 'page' : undefined}
+                        aria-label={`Page ${pageNum}`}
+                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xs font-bold rounded-xs transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-[#3e502a] text-white shadow-xs'
+                            : 'text-stone-700 bg-white border border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPagesCount}
+                  className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  Next →
+                </button>
+              </nav>
+            )}
           </div>
         )}
       </div>
@@ -695,3 +610,4 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
     </div>
   )
 }
+

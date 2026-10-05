@@ -125,7 +125,7 @@ export function FilterDrawer({
 
   return (
     <div
-      className={`fixed inset-0 z-[100] lg:hidden ${
+      className={`fixed inset-0 z-[100] ${
         open ? 'visible' : 'invisible pointer-events-none transition-[visibility] delay-300'
       }`}
     >
@@ -196,7 +196,7 @@ export function FilterDrawer({
             onClick={onClose}
             className="h-11 flex-[1.6] rounded-xs bg-[#3e502a] px-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-[#324122] cursor-pointer"
           >
-            Apply ({resultCount} {resultCount === 1 ? 'result' : 'results'})
+            Apply Filters {resultCount > 0 ? `(${resultCount})` : ''}
           </button>
         </div>
       </aside>
