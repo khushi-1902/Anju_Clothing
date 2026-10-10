@@ -247,7 +247,7 @@ export function AdminProductsPage() {
             </svg>
             <input
               type="text"
-              placeholder="Search by title, handle, fabric..."
+              placeholder="Search by title, SKU, handle, fabric..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:outline-none focus:border-[#769055] focus:bg-white transition-all text-[#232B1E]"
@@ -335,6 +335,11 @@ export function AdminProductsPage() {
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {p.sku && (
+                          <span className="text-[10px] font-mono bg-[#E8EFE2] text-[#2C3B1E] font-bold px-1.5 py-0.2 rounded border border-[#C5D6B6]">
+                            {p.sku}
+                          </span>
+                        )}
                         <span className="text-[10px] bg-[#F0F5EB] text-[#4A6333] font-semibold px-1.5 py-0.2 rounded border border-[#D5DFC9]">
                           {p.category || 'Ethnic Wear'}
                         </span>
@@ -418,6 +423,7 @@ export function AdminProductsPage() {
             <thead>
               <tr className="bg-[#F7F9F5] border-b border-[#EBEFE6] text-[11px] font-semibold text-[#5D6F4E] uppercase tracking-wider">
                 <th className="py-3 px-4">Product</th>
+                <th className="py-3 px-4">SKU</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Price</th>
                 <th className="py-3 px-4">Stock</th>
@@ -430,6 +436,7 @@ export function AdminProductsPage() {
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     <td className="py-3 px-4"><div className="h-12 w-64 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3 px-4"><div className="h-4 w-20 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3 px-4"><div className="h-4 w-14 bg-[#F0F5EB] rounded" /></td>
@@ -476,6 +483,17 @@ export function AdminProductsPage() {
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      {/* SKU */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {p.sku ? (
+                          <span className="font-mono text-[11px] font-bold text-[#3E522B] bg-[#F0F5EB] px-2 py-0.5 rounded border border-[#DCE6D2]">
+                            {p.sku}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 font-mono text-[11px]">—</span>
+                        )}
                       </td>
 
                       {/* Category */}

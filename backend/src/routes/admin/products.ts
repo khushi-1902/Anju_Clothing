@@ -29,7 +29,7 @@ adminProductsRouter.get('/', async (req: Request, res: Response) => {
 
     if (search && search.trim()) {
       params.push(`%${search.trim().toLowerCase()}%`)
-      whereClause += ` WHERE (LOWER(p.name) LIKE $${params.length} OR LOWER(p.handle) LIKE $${params.length} OR LOWER(COALESCE(p.fabric, '')) LIKE $${params.length})`
+      whereClause += ` WHERE (LOWER(p.name) LIKE $${params.length} OR LOWER(p.handle) LIKE $${params.length} OR LOWER(COALESCE(p.fabric, '')) LIKE $${params.length} OR LOWER(COALESCE(p.sku, '')) LIKE $${params.length})`
     }
 
     if (category && category !== 'all') {
@@ -39,7 +39,7 @@ adminProductsRouter.get('/', async (req: Request, res: Response) => {
 
     const { rows } = await pool.query(
       `SELECT
-         p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
+         p.id, p.handle, p.sku, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
          p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
@@ -80,7 +80,7 @@ adminProductsRouter.get('/:idOrHandle', async (req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(
       `SELECT
-         p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
+         p.id, p.handle, p.sku, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
          p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
@@ -133,6 +133,7 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
       isSale = false,
       videoUrl = null,
       isCreatorsFavourite = false,
+      sku: inputSku,
       images = [],
       variants = [],
     } = req.body
@@ -143,6 +144,26 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
 
     if (!price || isNaN(Number(price))) {
       return res.status(400).json({ error: 'Valid selling price is required' })
+    }
+
+    // SKU validation (if provided)
+    let cleanSku: string | null = null
+    if (inputSku !== undefined && inputSku !== null && String(inputSku).trim() !== '') {
+      const formatted = String(inputSku).trim().toUpperCase()
+      if (formatted.length > 50) {
+        return res.status(400).json({ error: 'SKU cannot exceed 50 characters' })
+      }
+      if (!/^[A-Z0-9-]+$/.test(formatted)) {
+        return res.status(400).json({
+          error: 'Invalid SKU format. Only uppercase letters (A-Z), numbers (0-9), and hyphens (-) are allowed.',
+        })
+      }
+      // Check for duplicate SKU
+      const existingSku = await client.query(`SELECT id FROM products WHERE sku = $1 LIMIT 1`, [formatted])
+      if (existingSku.rows.length > 0) {
+        return res.status(409).json({ error: `SKU "${formatted}" is already in use by another product. SKU must be unique.` })
+      }
+      cleanSku = formatted
     }
 
     // Generate unique handle if not provided
@@ -157,30 +178,38 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
 
     await client.query('BEGIN')
 
-    // 1. Insert product (matching exact columns)
+    // 1. Insert product (matching exact columns, auto-assigning sku from product_sku_seq if not specified)
+    const insertParams: any[] = [
+      handle,
+      name.trim(),
+      category || 'Sarees',
+      fabric || null,
+      work || null,
+      descriptionHtml || null,
+      Math.round(Number(price)),
+      comparePrice ? Math.round(Number(comparePrice)) : null,
+      Boolean(isNewArrival),
+      Boolean(isBestseller),
+      Boolean(isSale),
+      videoUrl && String(videoUrl).trim() ? String(videoUrl).trim() : null,
+      Boolean(isCreatorsFavourite),
+    ]
+
+    let skuValueClause = `'ANJ-' || lpad(nextval('product_sku_seq')::text, 4, '0')`
+    if (cleanSku) {
+      insertParams.push(cleanSku)
+      skuValueClause = `$${insertParams.length}`
+    }
+
     const productInsert = await client.query(
       `INSERT INTO products (
          handle, name, category, fabric, work, "descriptionHtml",
          price, "comparePrice", "isNewArrival", "isBestseller", "isSale",
-         "videoUrl", "isCreatorsFavourite", "createdAt"
+         "videoUrl", "isCreatorsFavourite", sku, "createdAt"
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
-       RETURNING id`,
-      [
-        handle,
-        name.trim(),
-        category || 'Sarees',
-        fabric || null,
-        work || null,
-        descriptionHtml || null,
-        Math.round(Number(price)),
-        comparePrice ? Math.round(Number(comparePrice)) : null,
-        Boolean(isNewArrival),
-        Boolean(isBestseller),
-        Boolean(isSale),
-        videoUrl && String(videoUrl).trim() ? String(videoUrl).trim() : null,
-        Boolean(isCreatorsFavourite),
-      ]
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${skuValueClause}, NOW())
+       RETURNING id, sku`,
+      insertParams
     )
 
     const productId = productInsert.rows[0].id
@@ -231,7 +260,7 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
     // 4. Fetch full created product
     const { rows } = await client.query(
       `SELECT
-         p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
+         p.id, p.handle, p.sku, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
          p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
@@ -252,8 +281,11 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, product: rows[0] })
   } catch (err: any) {
-    await client.query('ROLLBACK')
+    await client.query('ROLLBACK').catch(() => {})
     console.error('Error creating product:', err)
+    if (err.code === '23505' && (err.constraint === 'products_sku_key' || String(err.detail).includes('sku'))) {
+      return res.status(409).json({ error: 'SKU is already in use by another product. SKU must be unique.' })
+    }
     res.status(500).json({ error: err.message || 'Failed to create product' })
   } finally {
     client.release()
@@ -287,12 +319,42 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
       isSale = false,
       videoUrl = null,
       isCreatorsFavourite = false,
+      sku: inputSku,
       images,
       variants,
     } = req.body
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Product title is required' })
+    }
+
+    // Optional edited SKU validation (trim, uppercase, max 50, only A-Z 0-9 and "-")
+    let formattedSku: string | null = null
+    let updateSku = false
+    if (inputSku !== undefined && inputSku !== null) {
+      const cleanSku = String(inputSku).trim().toUpperCase()
+      if (cleanSku) {
+        if (cleanSku.length > 50) {
+          return res.status(400).json({ error: 'SKU cannot exceed 50 characters' })
+        }
+        if (!/^[A-Z0-9-]+$/.test(cleanSku)) {
+          return res.status(400).json({
+            error: 'Invalid SKU format. Only uppercase letters (A-Z), numbers (0-9), and hyphens (-) are allowed.',
+          })
+        }
+        // Ensure uniqueness across other products
+        const skuCheck = await client.query(
+          `SELECT id, name FROM products WHERE sku = $1 AND id != $2 LIMIT 1`,
+          [cleanSku, productId]
+        )
+        if (skuCheck.rows.length > 0) {
+          return res.status(409).json({
+            error: `SKU "${cleanSku}" is already in use by product "${skuCheck.rows[0].name}" (ID: ${skuCheck.rows[0].id}). SKU must be unique.`,
+          })
+        }
+        formattedSku = cleanSku
+        updateSku = true
+      }
     }
 
     let handle = inputHandle ? slugify(inputHandle) : slugify(name)
@@ -324,9 +386,10 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
            "isBestseller" = $10,
            "isSale" = $11,
            "videoUrl" = $12,
-           "isCreatorsFavourite" = $13
-       WHERE id = $14
-       RETURNING id`,
+           "isCreatorsFavourite" = $13,
+           sku = CASE WHEN $14 THEN $15 ELSE sku END
+       WHERE id = $16
+       RETURNING id, sku`,
       [
         handle,
         name.trim(),
@@ -341,6 +404,8 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
         Boolean(isSale),
         videoUrl && String(videoUrl).trim() ? String(videoUrl).trim() : null,
         Boolean(isCreatorsFavourite),
+        updateSku,
+        formattedSku,
         productId,
       ]
     )
@@ -398,7 +463,7 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
     // 4. Return updated product
     const { rows } = await client.query(
       `SELECT
-         p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
+         p.id, p.handle, p.sku, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
          p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
@@ -419,8 +484,11 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true, product: rows[0] })
   } catch (err: any) {
-    await client.query('ROLLBACK')
+    await client.query('ROLLBACK').catch(() => {})
     console.error('Error updating product:', err)
+    if (err.code === '23505' && (err.constraint === 'products_sku_key' || String(err.detail).includes('sku'))) {
+      return res.status(409).json({ error: 'SKU is already in use by another product. SKU must be unique.' })
+    }
     res.status(500).json({ error: err.message || 'Failed to update product' })
   } finally {
     client.release()

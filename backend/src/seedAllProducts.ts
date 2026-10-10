@@ -322,6 +322,23 @@ async function main() {
     )
     console.log(`Archived ${archived.rowCount ?? 0} products that are not in the CSV.`)
 
+    // Assign a code from sequence to any product where sku is NULL (ORDER BY id), never overwriting existing sku
+    const skuResult = await client.query(
+      `WITH null_skus AS (
+         SELECT id
+         FROM products
+         WHERE sku IS NULL
+         ORDER BY id
+       )
+       UPDATE products p
+          SET sku = 'ANJ-' || lpad(nextval('product_sku_seq')::text, 4, '0')
+         FROM null_skus
+        WHERE p.id = null_skus.id`,
+    )
+    if ((skuResult.rowCount ?? 0) > 0) {
+      console.log(`Assigned auto-generated SKUs to ${skuResult.rowCount} products with NULL SKU.`)
+    }
+
     await client.query('COMMIT')
     console.log(`\nDone. ${active.length} active, ${soldOut.length} archived (zero stock).`)
   } catch (err) {

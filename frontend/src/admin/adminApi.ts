@@ -69,6 +69,7 @@ export interface AdminOrder {
 export interface AdminProduct {
   id: number
   handle: string
+  sku?: string | null
   name: string
   category: string | null
   fabric: string | null
@@ -395,6 +396,7 @@ export async function uploadProductImages(
 export interface ProductInputPayload {
   name: string
   handle?: string
+  sku?: string | null
   category: string
   fabric?: string
   work?: string

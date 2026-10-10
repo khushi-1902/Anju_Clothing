@@ -16,6 +16,7 @@ interface ApiVariant {
 interface ApiProduct {
   id: number
   handle: string
+  sku?: string | null
   name: string
   category: string | null
   fabric: string | null
@@ -42,6 +43,7 @@ export function mapApiProduct(p: ApiProduct): Product {
 
   return {
     id: p.handle,
+    sku: p.sku ?? undefined,
     name: p.name,
     price: p.price,
     originalPrice: p.comparePrice ?? p.price,
@@ -411,6 +413,7 @@ function mapApiProductDetail(p: ApiProductDetail): Product {
 
   return {
     id: p.handle,
+    sku: p.sku ?? undefined,
     name: p.name,
     price: p.price,
     originalPrice: p.comparePrice ?? p.price,

@@ -506,10 +506,10 @@ export function Header() {
 
       {/* Expandable Search Input & Live Suggestions */}
       {searchOpen && (
-        <div ref={searchContainerRef} className="border-t border-[#EBE4D8] bg-[#FAF8F5] px-4 py-3 sm:py-4 shadow-md relative z-50">
+        <div ref={searchContainerRef} className="border-t border-[#EBE4D8] bg-[#FAF8F5] px-2.5 sm:px-4 py-2.5 sm:py-4 shadow-md relative z-50">
           <div className="max-w-2xl mx-auto">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center shadow-xs">
-              <div className="absolute left-3.5 text-gray-400 pointer-events-none flex items-center">
+              <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none flex items-center">
                 <svg className="w-4 h-4 text-[#769055]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
@@ -518,14 +518,14 @@ export function Header() {
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search sarees, lehengas, anarkalis, shararas..."
+                placeholder="Search products, category, or SKU (e.g. ANJ-0001)..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 autoFocus
-                className="w-full bg-white border border-[#D9D0C3] focus:border-[#769055] rounded-none pl-10 pr-28 py-3 text-xs sm:text-sm text-[#2C2420] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#769055] transition-all"
+                className="w-full bg-white border border-[#D9D0C3] focus:border-[#769055] rounded-none pl-9 sm:pl-10 pr-20 sm:pr-32 py-2.5 sm:py-3 text-xs sm:text-sm text-[#2C2420] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#769055] transition-all"
               />
 
-              <div className="absolute right-1.5 flex items-center gap-1.5">
+              <div className="absolute right-1 sm:right-1.5 flex items-center gap-1 sm:gap-1.5">
                 {searchQuery && (
                   <button
                     type="button"
@@ -534,7 +534,7 @@ export function Header() {
                       setLiveResults([])
                       searchInputRef.current?.focus()
                     }}
-                    className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer rounded-full"
+                    className="p-1 sm:p-1.5 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer rounded-full"
                     title="Clear search"
                     aria-label="Clear search"
                   >
@@ -546,9 +546,14 @@ export function Header() {
 
                 <button
                   type="submit"
-                  className="px-4 sm:px-5 py-2 bg-[#769055] hover:bg-[#5E7343] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-[#769055] hover:bg-[#5E7343] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1 shrink-0"
+                  title="Search"
+                  aria-label="Search"
                 >
-                  <span>SEARCH</span>
+                  <svg className="w-3.5 h-3.5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <span className="hidden sm:inline">SEARCH</span>
                 </button>
 
                 <button
@@ -557,7 +562,7 @@ export function Header() {
                     setSearchOpen(false)
                     setLiveResults([])
                   }}
-                  className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                  className="p-1 sm:p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer rounded-full"
                   title="Close search"
                   aria-label="Close search"
                 >
@@ -570,7 +575,7 @@ export function Header() {
 
             {/* Live Search Instant Preview Dropdown */}
             {(isSearching || liveResults.length > 0 || (searchQuery.trim().length >= 2 && !isSearching)) && (
-              <div className="mt-2 bg-white border border-[#E8E2D8] shadow-2xl rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="mt-2 bg-white border border-[#E8E2D8] shadow-2xl rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 max-h-[70vh] flex flex-col">
                 {isSearching ? (
                   <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                     <svg className="w-4 h-4 animate-spin text-[#769055]" fill="none" viewBox="0 0 24 24">
@@ -580,20 +585,20 @@ export function Header() {
                     <span>Searching outfits...</span>
                   </div>
                 ) : liveResults.length > 0 ? (
-                  <div>
-                    <div className="px-3.5 py-2 bg-[#FAF8F5] border-b border-[#F0EBE1] flex items-center justify-between text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <div className="px-3 sm:px-3.5 py-2 bg-[#FAF8F5] border-b border-[#F0EBE1] flex items-center justify-between text-[11px] font-semibold text-stone-500 uppercase tracking-wider shrink-0">
                       <span>Products Found ({liveTotal})</span>
                       <span className="text-[10px] text-[#769055] font-bold">Live Results</span>
                     </div>
 
-                    <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                    <div className="divide-y divide-gray-100 overflow-y-auto overscroll-contain flex-1 max-h-[55vh] sm:max-h-80">
                       {liveResults.map(p => (
                         <div
                           key={p.id}
                           onClick={() => handleSelectProduct(p)}
-                          className="p-2.5 sm:p-3 flex items-center gap-3 hover:bg-[#FAF8F5] transition-colors cursor-pointer group"
+                          className="p-2 sm:p-3 flex items-center gap-2.5 sm:gap-3 hover:bg-[#FAF8F5] transition-colors cursor-pointer group"
                         >
-                          <div className="w-12 h-16 sm:w-14 sm:h-18 rounded bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                          <div className="w-11 h-14 sm:w-14 sm:h-18 rounded bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                             {p.img ? (
                               <img
                                 src={p.img}
@@ -609,7 +614,12 @@ export function Header() {
                             <h4 className="text-xs sm:text-sm font-semibold text-[#2C2420] group-hover:text-[#769055] transition-colors truncate">
                               {p.name}
                             </h4>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              {p.sku && (
+                                <span className="font-mono text-[9px] sm:text-[10px] font-bold text-[#769055] bg-[#769055]/10 px-1.5 py-0.2 rounded border border-[#769055]/20 shrink-0">
+                                  SKU: {p.sku}
+                                </span>
+                              )}
                               {p.category && (
                                 <span className="text-[10px] uppercase tracking-wider text-stone-500 font-medium truncate">
                                   {p.category}
@@ -621,12 +631,12 @@ export function Header() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
                               <span className="text-xs sm:text-sm font-bold text-[#2C2420]">
                                 ₹{p.price.toLocaleString('en-IN')}
                               </span>
                               {p.originalPrice && p.originalPrice > p.price && (
-                                <span className="text-[11px] text-gray-400 line-through">
+                                <span className="text-[10px] sm:text-[11px] text-gray-400 line-through">
                                   ₹{p.originalPrice.toLocaleString('en-IN')}
                                 </span>
                               )}
@@ -645,19 +655,19 @@ export function Header() {
                     <button
                       type="button"
                       onClick={() => handleSearchSubmit()}
-                      className="w-full py-2.5 px-4 bg-[#769055] hover:bg-[#5E7343] text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-2.5 px-4 bg-[#769055] hover:bg-[#5E7343] text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
                     >
-                      <span>View all {liveTotal} results for "{searchQuery}"</span>
+                      <span className="truncate">View all {liveTotal} results for "{searchQuery}"</span>
                       <span>→</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="p-5 text-center">
+                  <div className="p-4 sm:p-5 text-center">
                     <p className="text-xs sm:text-sm text-stone-600 font-medium">
                       No outfits found matching "<span className="font-bold text-[#2C2420]">{searchQuery}</span>"
                     </p>
                     <p className="text-[11px] text-stone-400 mt-1">
-                      Press Search or Enter to view all products in the catalog.
+                      Try searching by product name, category, or SKU (e.g. ANJ-0001).
                     </p>
                   </div>
                 )}
@@ -680,6 +690,25 @@ export function Header() {
           <div className="relative z-10 w-full h-full bg-[#FAF8F5] border-t border-gray-100 overflow-y-auto overscroll-contain flex flex-col justify-between p-4 sm:p-6 pb-28 sm:pb-32 space-y-4 shadow-2xl animate-in slide-in-from-top-2 duration-200">
             
             <div className="space-y-3">
+              {/* Quick Search Action for Mobile Menu */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setSearchOpen(true)
+                  setTimeout(() => searchInputRef.current?.focus(), 150)
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-3 bg-white border border-[#EBE4D8] rounded-2xl text-xs text-stone-600 hover:text-[#769055] transition-all shadow-xs cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <svg className="w-4 h-4 text-[#769055]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <span className="font-medium text-stone-500 group-hover:text-[#769055]">Search products or SKU...</span>
+                </div>
+                <span className="text-[10px] font-bold text-[#769055] uppercase tracking-wider bg-[#769055]/10 px-2 py-0.5 rounded">SEARCH</span>
+              </button>
+
               {/* 1. Explore Collections Section */}
               <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-[#EBE4D8] shadow-xs space-y-1">
                 <div className="px-3 py-1.5 border-b border-[#F0EBE1] mb-1">

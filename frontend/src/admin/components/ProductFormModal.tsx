@@ -49,6 +49,7 @@ export function ProductFormModal({
   // Form states
   const [name, setName] = useState('')
   const [handle, setHandle] = useState('')
+  const [sku, setSku] = useState('')
   const [category, setCategory] = useState(CATEGORIES[0])
   const [fabric, setFabric] = useState('')
   const [work, setWork] = useState('')
@@ -82,6 +83,7 @@ export function ProductFormModal({
     if (editingProduct) {
       setName(editingProduct.name || '')
       setHandle(editingProduct.handle || '')
+      setSku(editingProduct.sku || '')
       setCategory(editingProduct.category || CATEGORIES[0])
       setFabric(editingProduct.fabric || '')
       setWork((editingProduct as any).work || '')
@@ -134,6 +136,7 @@ export function ProductFormModal({
       // Reset for new product
       setName('')
       setHandle('')
+      setSku('')
       setCategory(CATEGORIES[0])
       setFabric('')
       setWork('')
@@ -298,6 +301,7 @@ export function ProductFormModal({
       const payload: ProductInputPayload = {
         name: name.trim(),
         handle: handle.trim() || undefined,
+        sku: sku.trim().toUpperCase() || undefined,
         category,
         fabric: fabric.trim() || undefined,
         work: work.trim() || undefined,
@@ -405,6 +409,23 @@ export function ProductFormModal({
                   onChange={(e) => handleNameChange(e.target.value)}
                   className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-2 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#202223] mb-1">
+                  Product SKU
+                </label>
+                <input
+                  type="text"
+                  placeholder={editingProduct ? "e.g. ANJ-0001" : "Auto-generated upon save (or specify custom SKU)"}
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value.toUpperCase())}
+                  maxLength={50}
+                  className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono font-bold text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors uppercase"
+                />
+                <p className="text-[11px] text-[#6D7175] mt-1">
+                  Auto-generated. You can change it, but it must be unique.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -388,6 +388,7 @@ function ProductDetailBody({ product }: { product: Product }) {
 
   const {
     id,
+    sku,
     name,
     price,
     originalPrice,
@@ -1152,9 +1153,16 @@ function ProductDetailBody({ product }: { product: Product }) {
         {/* 3. Product Info Card */}
         <div className="bg-white p-4 space-y-3.5 border border-border/70 rounded-md shadow-xs">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#c9973a] truncate">
-              {category || 'Anju Clothing'}
-            </span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[#c9973a] truncate">
+                {category || 'Anju Clothing'}
+              </span>
+              {sku && (
+                <span className="text-[10px] font-mono font-semibold text-stone-600 bg-[#FAF7F2] px-1.5 py-0.5 rounded border border-[#ebd5be] shrink-0">
+                  SKU: {sku}
+                </span>
+              )}
+            </div>
             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 rounded-xs shrink-0">
               ✓ In Stock
             </span>
@@ -1491,9 +1499,16 @@ function ProductDetailBody({ product }: { product: Product }) {
             <div className="lg:col-span-6 min-w-0 flex flex-col space-y-5 sm:space-y-6 text-left">
               <div className="space-y-3.5 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#c9973a]">
-                    {category || 'Anju Clothing'}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#c9973a]">
+                      {category || 'Anju Clothing'}
+                    </span>
+                    {sku && (
+                      <span className="text-[11px] font-mono font-semibold text-stone-600 bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#ebd5be]">
+                        SKU: {sku}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => toggleWishlist(product)}
                     className="flex items-center gap-1.5 text-xs text-charcoal hover:text-red-500 transition-colors p-1 cursor-pointer"

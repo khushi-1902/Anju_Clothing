@@ -17,6 +17,7 @@ export interface SignupPayload {
 
 export interface Product {
   id: string
+  sku?: string | null
   name: string
   price: number
   originalPrice: number

@@ -598,6 +598,7 @@ app.get('/api/products', async (req, res) => {
           const tIdx = params.length
           return `(
             p.name ILIKE $${tIdx} OR 
+            COALESCE(p.sku, '') ILIKE $${tIdx} OR 
             p.category ILIKE $${tIdx} OR 
             p.fabric ILIKE $${tIdx} OR 
             p.work ILIKE $${tIdx} OR 
@@ -608,6 +609,7 @@ app.get('/api/products', async (req, res) => {
 
         conditions.push(`(
           p.name ILIKE $${searchPhraseIdx} OR 
+          COALESCE(p.sku, '') ILIKE $${searchPhraseIdx} OR 
           p.category ILIKE $${searchPhraseIdx} OR 
           p.fabric ILIKE $${searchPhraseIdx} OR 
           p.work ILIKE $${searchPhraseIdx} OR 
@@ -618,6 +620,7 @@ app.get('/api/products', async (req, res) => {
       } else {
         conditions.push(`(
           p.name ILIKE $${searchPhraseIdx} OR 
+          COALESCE(p.sku, '') ILIKE $${searchPhraseIdx} OR 
           p.category ILIKE $${searchPhraseIdx} OR 
           p.fabric ILIKE $${searchPhraseIdx} OR 
           p.work ILIKE $${searchPhraseIdx} OR 
@@ -779,7 +782,7 @@ app.get('/api/products', async (req, res) => {
           ELSE 99
         END ASC, p.id ASC`
       } else if (search && searchPhraseIdx) {
-        orderBy = `(CASE WHEN p.name ILIKE $${searchPhraseIdx} THEN 1 ELSE 2 END) ASC, p."isBestseller" DESC, p."createdAt" DESC`
+        orderBy = `(CASE WHEN COALESCE(p.sku, '') ILIKE $${searchPhraseIdx} THEN 0 WHEN p.name ILIKE $${searchPhraseIdx} THEN 1 ELSE 2 END) ASC, p."isBestseller" DESC, p."createdAt" DESC`
       } else {
         orderBy = 'p."isBestseller" DESC, p."isNewArrival" DESC, p."createdAt" DESC'
       }
@@ -795,7 +798,7 @@ app.get('/api/products', async (req, res) => {
 
     const itemsQuery = `
       SELECT
-        p.id, p.handle, p.name, p.category, p.fabric, p.occasion, p.price, p."comparePrice",
+        p.id, p.handle, p.sku, p.name, p.category, p.fabric, p.occasion, p.price, p."comparePrice",
         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p.status, p."createdAt",
         COUNT(*) OVER() AS total_count,
         COALESCE((
@@ -1053,7 +1056,7 @@ app.get('/api/products/:handle', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
-         p.id, p.handle, p.name, p."descriptionHtml", p.category, p.fabric, p.work,
+         p.id, p.handle, p.sku, p.name, p."descriptionHtml", p.category, p.fabric, p.work,
          p.price, p."comparePrice", p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
