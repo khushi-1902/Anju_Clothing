@@ -1,47 +1,85 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FaFacebookF, FaInstagram, FaYoutube } from 'react-icons/fa'
 import { STORE_INFO, CATEGORIES } from '../data/products'
 import { useShop } from '../context/ShopContext'
 
 type SectionKey = 'about' | 'information' | 'category' | 'store'
 
-/* Payment logo marks — real brand shapes/colors, inlined so no image assets or extra deps are needed */
+/* Payment logo marks — authentic brand shapes/colors, perfectly centered horizontally and vertically */
 const MastercardLogo = () => (
-  <svg viewBox="0 0 40 24" className="w-8 h-5" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="15" cy="12" r="10" fill="#EB001B" />
-    <circle cx="25" cy="12" r="10" fill="#F79E1B" />
-    <path d="M20 4.5a10 10 0 000 15 10 10 0 000-15z" fill="#FF5F00" />
+  <svg viewBox="0 0 48 30" className="w-10 h-6" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard">
+    <circle cx="18" cy="15" r="9" fill="#EB001B" />
+    <circle cx="30" cy="15" r="9" fill="#F79E1B" />
+    <path
+      d="M24 8.64a8.96 8.96 0 013.36 6.36 8.96 8.96 0 01-3.36 6.36 8.96 8.96 0 01-3.36-6.36 8.96 8.96 0 013.36-6.36z"
+      fill="#FF5F00"
+    />
   </svg>
 )
 
 const VisaLogo = () => (
-  <svg viewBox="0 0 48 16" className="w-11 h-4" xmlns="http://www.w3.org/2000/svg">
-    <text x="0" y="13" fontFamily="Arial, Helvetica, sans-serif" fontStyle="italic" fontWeight="800" fontSize="16" fill="#FFFFFF" letterSpacing="-0.5">
+  <svg viewBox="0 0 54 30" className="w-11 h-6" xmlns="http://www.w3.org/2000/svg" aria-label="Visa">
+    <text
+      x="27"
+      y="15.5"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontFamily="Impact, Arial Black, -apple-system, sans-serif"
+      fontStyle="italic"
+      fontWeight="900"
+      fontSize="16"
+      fill="#FFFFFF"
+      letterSpacing="0.8px"
+    >
       VISA
     </text>
   </svg>
 )
 
 const PayPalLogo = () => (
-  <svg viewBox="0 0 60 16" className="w-14 h-4" xmlns="http://www.w3.org/2000/svg">
-    <text x="0" y="13" fontFamily="Arial, Helvetica, sans-serif" fontStyle="italic" fontWeight="800" fontSize="15">
+  <svg viewBox="0 0 58 30" className="w-12 h-6" xmlns="http://www.w3.org/2000/svg" aria-label="PayPal">
+    <text
+      x="29"
+      y="15.5"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+      fontStyle="italic"
+      fontWeight="900"
+      fontSize="14.5"
+      letterSpacing="-0.2px"
+    >
       <tspan fill="#003087">Pay</tspan>
-      <tspan fill="#009CDE">Pal</tspan>
+      <tspan fill="#0079C1">Pal</tspan>
     </text>
   </svg>
 )
 
 const GooglePayLogo = () => (
-  <svg viewBox="0 0 74 24" className="w-14 h-4" xmlns="http://www.w3.org/2000/svg">
-    <g transform="translate(0,2) scale(0.42)">
-      <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
-      <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
-      <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z" />
-      <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+  <svg viewBox="0 0 58 30" className="w-12 h-6" xmlns="http://www.w3.org/2000/svg" aria-label="Google Pay">
+    {/* Centered group for G-logo + Pay text */}
+    <g transform="translate(6, 6)">
+      {/* Google "G" logo */}
+      <g transform="scale(0.38) translate(0, 2)">
+        <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
+        <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
+        <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z" />
+        <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+      </g>
+      {/* "Pay" text */}
+      <text
+        x="21"
+        y="10"
+        dominantBaseline="central"
+        fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        fontWeight="600"
+        fontSize="13"
+        fill="#3C4043"
+      >
+        Pay
+      </text>
     </g>
-    <text x="24" y="16" fontFamily="Arial, Helvetica, sans-serif" fontWeight="500" fontSize="13" fill="#3C4043">
-      Pay
-    </text>
   </svg>
 )
 
@@ -86,29 +124,39 @@ export function Footer() {
   const informationContent = (
     <ul className="space-y-2 text-xs text-white/90">
       <li>
-        <button onClick={() => navigateTo('contact')} className="hover:underline cursor-pointer">
-          Privacy Policy
-        </button>
+        <Link to="/policies?tab=shipping" className="hover:underline hover:text-[#fae5a0] transition-colors">
+          Shipping & Delivery Policy
+        </Link>
       </li>
       <li>
-        <button onClick={() => navigateTo('contact')} className="hover:underline cursor-pointer">
+        <Link to="/policies?tab=cod" className="hover:underline hover:text-[#fae5a0] transition-colors">
+          Cash on Delivery (COD) Policy
+        </Link>
+      </li>
+      <li>
+        <Link to="/policies?tab=returns" className="hover:underline hover:text-[#fae5a0] transition-colors">
           Exchange & Return Policy
-        </button>
+        </Link>
       </li>
       <li>
-        <button onClick={() => navigateTo('contact')} className="hover:underline cursor-pointer">
-          Shipping Policy
-        </button>
+        <Link to="/policies?tab=size-chart" className="hover:underline hover:text-[#fae5a0] transition-colors">
+          Size Guide & Measurements Chart
+        </Link>
       </li>
       <li>
-        <button onClick={() => navigateTo('contact')} className="hover:underline cursor-pointer">
+        <Link to="/policies?tab=terms" className="hover:underline hover:text-[#fae5a0] transition-colors">
           Terms & Conditions
-        </button>
+        </Link>
       </li>
       <li>
-        <button onClick={() => navigateTo('contact')} className="hover:underline cursor-pointer">
-          Contact Details
-        </button>
+        <Link to="/policies?tab=privacy" className="hover:underline hover:text-[#fae5a0] transition-colors">
+          Privacy Policy
+        </Link>
+      </li>
+      <li>
+        <Link to="/contact" className="hover:underline hover:text-[#fae5a0] transition-colors">
+          Contact & Customer Support
+        </Link>
       </li>
     </ul>
   )
@@ -229,17 +277,17 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-center gap-4">
 
           {/* Payment Badges (Mastercard, PayPal, Visa, Google Pay) */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="w-14 h-9 bg-black rounded-md flex items-center justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <span className="w-14 h-9 bg-black rounded-lg flex items-center justify-center shadow-xs border border-black/10 overflow-hidden" title="Mastercard">
               <MastercardLogo />
             </span>
-            <span className="w-14 h-9 bg-white border border-gray-300 rounded-md flex items-center justify-center">
+            <span className="w-14 h-9 bg-white border border-gray-300 rounded-lg flex items-center justify-center shadow-xs overflow-hidden" title="PayPal">
               <PayPalLogo />
             </span>
-            <span className="w-14 h-9 bg-[#1A1F71] rounded-md flex items-center justify-center">
+            <span className="w-14 h-9 bg-[#1A1F71] border border-[#141858] rounded-lg flex items-center justify-center shadow-xs overflow-hidden" title="Visa">
               <VisaLogo />
             </span>
-            <span className="w-14 h-9 bg-white border border-gray-300 rounded-md flex items-center justify-center">
+            <span className="w-14 h-9 bg-white border border-gray-300 rounded-lg flex items-center justify-center shadow-xs overflow-hidden" title="Google Pay">
               <GooglePayLogo />
             </span>
           </div>
@@ -250,20 +298,6 @@ export function Footer() {
           </p>
         </div>
       </div>
-
-      {/* Floating WhatsApp Quick Chat Button */}
-      <a
-        href={`https://wa.me/${STORE_INFO.phoneRaw}?text=Hi%20Anju%20Clothings,%20I%20have%20an%20inquiry.`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#1EBE5D] text-white p-3.5 rounded-full shadow-2xl transition-all transform hover:scale-110 flex items-center justify-center cursor-pointer"
-        aria-label="Chat on WhatsApp"
-        title="Chat on WhatsApp"
-      >
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-        </svg>
-      </a>
     </>
   )
 }

@@ -1,4 +1,4 @@
-export type PageType = 'home' | 'all-products' | 'bestsellers' | 'contact' | 'product-detail' | 'login' | 'signup' | 'account' | 'orders' | 'track-order'
+export type PageType = 'home' | 'all-products' | 'bestsellers' | 'contact' | 'product-detail' | 'login' | 'signup' | 'account' | 'orders'
 
 export interface ShopUser {
   firstName: string
@@ -40,6 +40,8 @@ export interface Product {
   isNewArrival?: boolean
   isBestseller?: boolean
   isSale?: boolean
+  videoUrl?: string
+  isCreatorsFavourite?: boolean
 }
 
 export interface Category {

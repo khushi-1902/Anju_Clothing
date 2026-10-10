@@ -12,7 +12,8 @@
     "seed:new-arrivals": "tsx src/seedNewArrivals.ts",
     "seed:bestsellers": "tsx src/seedBestsellers.ts",
     "seed:sale": "tsx src/seedSale.ts",
-    "seed:dry": "tsx src/seedNewArrivals.ts --dry-run"
+    "seed:dry": "tsx src/seedNewArrivals.ts --dry-run",
+    "mark:creators": "tsx src/markCreatorsFavourites.ts"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +29,7 @@
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "multer": "^2.4.0",
+    "nodemailer": "^10.1.0",
     "pg": "^8.23.0",
     "razorpay": "^2.9.8",
     "svix": "^2.5.0"
@@ -38,6 +40,7 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.6.2",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "prisma": "^8.0.0-rc.15",
     "tsx": "^4.23.15",

@@ -124,12 +124,12 @@ export function ReviewsSection() {
             <LotusCrest />
 
             {/* Heading with gold rules on both sides */}
-            <div className="mt-2 flex items-center w-full max-w-2xl gap-3 sm:gap-5">
+            <div className="mt-2 flex items-center justify-center w-full max-w-2xl gap-2 sm:gap-4 md:gap-5 px-2">
               <SideRule side="left" />
 
               <h2
                 id="reviews-heading"
-                className="shrink-0 font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#3e502a] tracking-wide leading-tight"
+                className="font-serif text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-[#3e502a] tracking-tight sm:tracking-wide leading-tight text-center"
               >
                 Customer Reviews
               </h2>
@@ -137,7 +137,7 @@ export function ReviewsSection() {
               <SideRule side="right" />
             </div>
 
-            <p className="mt-3 sm:mt-4 text-[#6d5b52] font-serif italic text-sm sm:text-base leading-relaxed max-w-md">
+            <p className="mt-2.5 sm:mt-3.5 text-[#6d5b52] font-serif italic text-xs sm:text-sm md:text-base leading-relaxed max-w-md px-2">
               Hear from our festive community — real experiences and heartfelt love
             </p>
           </div>

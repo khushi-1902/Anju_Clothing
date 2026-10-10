@@ -13,7 +13,7 @@ export function Hero() {
       <img
         src={heroBannerImage}
         alt="Anju Clothings Festive Collection Hero Banner"
-        className="w-full h-auto object-cover block"
+        className="w-full h-auto object-contain block"
       />
     </section>
   )

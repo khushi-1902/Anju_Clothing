@@ -12,7 +12,38 @@ export async function initSettingsTable() {
       );
     `)
 
-    // 2. Default settings seed
+    // 2. Safe schema extensions for creators favourite collection & video URLs
+    await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS "isCreatorsFavourite" BOOLEAN DEFAULT false;
+    `)
+
+    // 3. Ensure authentic influencer / creator products are flagged (strictly 14 products)
+    const influencerHandles = [
+      'summer-special-farshi-set',
+      'viral-real-mirror-bustier-set',
+      'noor-set',
+      'cosmos-gold-with-embroidery-work-gown',
+      'viral-sunflower-farshi-set',
+      'aafreen-luxe-chinon-gown-set',
+      'viral-evil-eye-farshi-set',
+      'viral-fendi-silk-anarkali-set',
+      'viral-fish-cut-fully-stitched-lehenga',
+      'faux-georgette-sharara-set',
+      'premium-chinon-silk-thread-sequence-anarkali-set-with-tabby-organza-dupatta',
+      'tibby-organza-silk-brush-print-set',
+      'pure-cotton-bandhej-print-short-kurti',
+      'premium-fendy-silk-3-piece-suit-set-with-mirror-work',
+    ]
+
+    await pool.query(`UPDATE products SET "isCreatorsFavourite" = false`)
+    await pool.query(
+      `UPDATE products SET "isCreatorsFavourite" = true, status = 'active' WHERE handle = ANY($1)`,
+      [influencerHandles]
+    )
+    console.log('✅ Exactly 14 influencer products synchronized in products table.')
+
+    // 4. Default settings seed
     const defaultSettings = [
       { key: 'shipping_default_courier', value: 'Blue Dart Express', description: 'Default courier carrier for customer dispatches' },
       { key: 'shipping_flat_fee', value: '0', description: 'Standard flat shipping fee in INR (0 = Free Shipping)' },
@@ -33,7 +64,7 @@ export async function initSettingsTable() {
       )
     }
 
-    console.log('✅ store_settings table initialized & seeded.')
+    console.log('✅ store_settings and product video schema initialized & seeded.')
   } catch (err) {
     console.error('Error initializing store_settings table:', err)
   }

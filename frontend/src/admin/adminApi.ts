@@ -48,6 +48,10 @@ export interface AdminOrder {
   orderStatus: string
   courierName?: string
   trackingNumber?: string
+  trackingId?: string | null
+  trackingUrl?: string | null
+  whatsappConfirmedAt?: string | null
+  whatsappShippedAt?: string | null
   estimatedDelivery?: string
   notes?: string
   razorpayOrderId?: string | null
@@ -73,6 +77,8 @@ export interface AdminProduct {
   isNewArrival: boolean
   isBestseller: boolean
   isSale: boolean
+  videoUrl?: string | null
+  isCreatorsFavourite?: boolean
   totalStock: number
   images: { url: string; alt: string | null }[]
   variants: {
@@ -278,6 +284,60 @@ export async function updateOrderStatus(
 }
 
 /**
+ * Records that the order confirmation WhatsApp message was sent/opened.
+ */
+export async function markOrderWhatsAppConfirmed(
+  token: string,
+  orderNumber: string
+): Promise<AdminOrder> {
+  const res = await fetch(`${API_URL}/api/admin/orders/${encodeURIComponent(orderNumber)}/whatsapp-confirmed`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.error || `Failed to record WhatsApp confirmation: HTTP ${res.status}`)
+  }
+
+  const data = await res.json()
+  return data.order
+}
+
+/**
+ * Validates & records courier/tracking info and marks WhatsApp shipping message as sent/opened.
+ */
+export async function markOrderWhatsAppShipped(
+  token: string,
+  orderNumber: string,
+  payload: {
+    courierName: string
+    trackingId: string
+    trackingUrl: string
+  }
+): Promise<AdminOrder> {
+  const res = await fetch(`${API_URL}/api/admin/orders/${encodeURIComponent(orderNumber)}/whatsapp-shipped`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.error || `Failed to save shipping & WhatsApp details: HTTP ${res.status}`)
+  }
+
+  const data = await res.json()
+  return data.order
+}
+
+/**
  * Initiates Razorpay refund for an order via backend.
  */
 export async function refundAdminOrder(
@@ -344,6 +404,8 @@ export interface ProductInputPayload {
   isNewArrival?: boolean
   isBestseller?: boolean
   isSale?: boolean
+  videoUrl?: string | null
+  isCreatorsFavourite?: boolean
   images: { url: string; alt?: string; position?: number }[]
   variants: {
     id?: number

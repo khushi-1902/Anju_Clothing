@@ -64,6 +64,10 @@ adminOrdersRouter.get('/', async (req: Request, res: Response) => {
         items,
         "trackingNumber",
         "courierName",
+        "trackingId",
+        "trackingUrl",
+        "whatsappConfirmedAt",
+        "whatsappShippedAt",
         "estimatedDelivery",
         timeline,
         notes,
@@ -132,6 +136,129 @@ adminOrdersRouter.get('/:orderNumber', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Error fetching order details:', err)
     res.status(500).json({ error: err.message || 'Failed to fetch order details' })
+  }
+})
+
+/**
+ * PATCH /api/admin/orders/:orderNumber/whatsapp-confirmed
+ * Marks order confirmation WhatsApp message as opened/sent.
+ */
+adminOrdersRouter.patch('/:orderNumber/whatsapp-confirmed', async (req: Request, res: Response) => {
+  const { orderNumber } = req.params
+  try {
+    const { rows } = await pool.query(
+      `UPDATE orders
+       SET 
+         "whatsappConfirmedAt" = NOW(),
+         "updatedAt" = NOW()
+       WHERE "orderNumber" = $1
+       RETURNING *`,
+      [orderNumber]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    res.json({
+      success: true,
+      order: rows[0],
+      message: `WhatsApp confirmation timestamp recorded for #${orderNumber}`,
+    })
+  } catch (err: any) {
+    console.error('Error recording WhatsApp confirmation:', err)
+    res.status(500).json({ error: err.message || 'Failed to record WhatsApp confirmation' })
+  }
+})
+
+/**
+ * PATCH /api/admin/orders/:orderNumber/whatsapp-shipped
+ * Validates courier, tracking ID, tracking URL; saves them and marks WhatsApp shipping message as opened/sent.
+ */
+adminOrdersRouter.patch('/:orderNumber/whatsapp-shipped', async (req: Request, res: Response) => {
+  const { orderNumber } = req.params
+  const { courierName, trackingId, trackingUrl } = req.body
+
+  if (!courierName || typeof courierName !== 'string' || !courierName.trim()) {
+    return res.status(400).json({ error: 'Courier name is required.' })
+  }
+
+  if (!trackingId || typeof trackingId !== 'string' || !trackingId.trim()) {
+    return res.status(400).json({ error: 'Tracking ID is required.' })
+  }
+
+  if (!trackingUrl || typeof trackingUrl !== 'string' || !trackingUrl.trim() || !/^https?:\/\//i.test(trackingUrl.trim())) {
+    return res.status(400).json({ error: 'Tracking URL is required and must start with http:// or https://' })
+  }
+
+  try {
+    // 1. Fetch current order to check timeline
+    const currentRes = await pool.query(
+      `SELECT timeline, "orderStatus" FROM orders WHERE "orderNumber" = $1 LIMIT 1`,
+      [orderNumber]
+    )
+
+    if (currentRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    let timeline = currentRes.rows[0].timeline || []
+    if (typeof timeline === 'string') {
+      try { timeline = JSON.parse(timeline) } catch (_) { timeline = [] }
+    }
+
+    const trimmedCourier = courierName.trim()
+    const trimmedTrackingId = trackingId.trim()
+    const trimmedTrackingUrl = trackingUrl.trim()
+
+    // If order was not yet marked shipped/delivered, update status to Shipped
+    let newOrderStatus = currentRes.rows[0].orderStatus
+    if (newOrderStatus !== 'Delivered' && newOrderStatus !== 'Shipped') {
+      newOrderStatus = 'Shipped'
+      const nowFormatted = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+      timeline.push({
+        status: 'Shipped',
+        time: nowFormatted,
+        completed: true,
+        description: `Dispatched via ${trimmedCourier} (Tracking ID: ${trimmedTrackingId}). WhatsApp shipping update sent.`,
+      })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE orders
+       SET 
+         "courierName" = $1,
+         "trackingId" = $2,
+         "trackingNumber" = COALESCE("trackingNumber", $2),
+         "trackingUrl" = $3,
+         "whatsappShippedAt" = NOW(),
+         "orderStatus" = $4,
+         timeline = $5::jsonb,
+         "updatedAt" = NOW()
+       WHERE "orderNumber" = $6
+       RETURNING *`,
+      [
+        trimmedCourier,
+        trimmedTrackingId,
+        trimmedTrackingUrl,
+        newOrderStatus,
+        JSON.stringify(timeline),
+        orderNumber,
+      ]
+    )
+
+    res.json({
+      success: true,
+      order: rows[0],
+      message: `Shipping information and WhatsApp update saved for #${orderNumber}`,
+    })
+  } catch (err: any) {
+    console.error('Error updating WhatsApp shipped status:', err)
+    res.status(500).json({ error: err.message || 'Failed to update WhatsApp shipped status' })
   }
 })
 

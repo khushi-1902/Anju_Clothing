@@ -1,9 +1,9 @@
 import { Hero } from '../components/Hero'
 import { CollectionsSection } from '../components/CollectionsSection'
 import { NewArrivalsSection } from '../components/NewArrivalsSection'
+import { CreatorsFavouriteSection } from '../components/CreatorsFavouriteSection'
 import { BestsellersSection } from '../components/BestsellersSection'
 import { SaleSection } from '../components/SaleSection'
-import { FeatureBanner } from '../components/FeatureBanner'
 import { ReviewsSection } from '../components/ReviewsSection'
 
 export function HomePage() {
@@ -18,8 +18,8 @@ export function HomePage() {
       {/* 3. New Arrivals */}
       <NewArrivalsSection />
 
-      {/* 4. Feature Banner */}
-      <FeatureBanner />
+      {/* 4. Creators' Favourite Collection (Interactive Video Showcase) */}
+      <CreatorsFavouriteSection />
 
       {/* 5. Best Sellers */}
       <BestsellersSection />

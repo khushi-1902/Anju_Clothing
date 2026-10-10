@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { STORE_INFO, FAQS } from '../data/products'
-import { TrustBar } from '../components/TrustBar'
 
 export function ContactUsPage() {
   const [formData, setFormData] = useState({
@@ -268,8 +267,6 @@ export function ContactUsPage() {
           </div>
         </div>
       </div>
-
-      <TrustBar />
     </div>
   )
 }

@@ -49,6 +49,10 @@ model Orders {
   userId              Int?
   amountPayableNow    Int          @default(0)
   amountDueOnDelivery Int          @default(0)
+  whatsappConfirmedAt Timestamptz?
+  whatsappShippedAt   Timestamptz?
+  trackingId          String?
+  trackingUrl         String?
   orderItems          OrderItems[]
   user                Users?       @relation(fields: [userId], references: [id], map: "orders_userId_fkey", index: false)
 
@@ -75,6 +79,7 @@ model Products {
   name            String
   price           Int
   work            String?
+  sku  String?  @unique(map: "products_sku_key")
   orderItems      OrderItems[]
   productImages   ProductImages[]
   productReviews  ProductReviews[]

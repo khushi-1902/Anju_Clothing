@@ -576,35 +576,35 @@ export const REVIEWS: Review[] = [
 ]
 
 export const TRUST_ITEMS: TrustItem[] = [
-  { icon: '🚚', label: 'Free Shipping', sub: 'On all online prepaid orders' },
-  { icon: '↩️', label: 'Easy 7-Day Returns', sub: 'Hassle-free exchanges' },
-  { icon: '🔒', label: '100% Secure Payments', sub: 'UPI, Card, NetBanking & COD' },
-  { icon: '🧵', label: 'Handcrafted Quality', sub: 'Premium fabrics & handwork' },
+  { icon: '🚚', label: 'Fast Delivery', sub: 'Prepaid 4–5d · COD 6–7d' },
+  { icon: '🔄', label: 'Exchange Policy', sub: 'Size & defect exchange' },
+  { icon: '🔒', label: 'Secure Payments', sub: 'UPI, Cards & COD' },
+  { icon: '🧵', label: 'Handcrafted Quality', sub: '2" inside alteration margin' },
 ]
 
 export const FAQS = [
   {
-    q: 'How long does standard delivery take?',
-    a: 'Orders are dispatched within 24-48 hours. Delivery takes 3-5 business days across metro cities and 5-7 business days for rest of India.',
+    q: 'What are your delivery timelines?',
+    a: 'Prepaid Delivery Timeline: 4–5 days after dispatch with Free Express Shipping. Cash on Delivery (COD) Delivery Timeline: 6–7 days after dispatch. We also accept urgent orders — for urgent delivery requirements, please contact us directly on WhatsApp.',
   },
   {
-    q: 'What is your shipping policy?',
-    a: 'We offer 100% FREE Express Shipping on all online prepaid orders (UPI/Card/NetBanking). For Cash on Delivery (COD) orders, an extra ₹200 booking fee is paid online to confirm dispatch, and the actual dress price is paid during delivery.',
+    q: 'What is your Cash on Delivery (COD) policy?',
+    a: 'Cash on Delivery is available across eligible orders. A ₹200 COD shipping charge is applicable in addition to the outfit price. This ₹200 charge must be paid in advance to confirm the COD order. The remaining outfit amount can be paid at the time of delivery.',
+  },
+  {
+    q: 'What is your Return & Exchange Policy?',
+    a: 'We do not offer refunds or returns. Exchange is available if: (1) We have sent the wrong product; (2) The product received is damaged or defective (proof / unboxing video required); or (3) For size exchange (courier charges for both sides will be borne by the customer).',
+  },
+  {
+    q: 'Can I place an urgent order?',
+    a: 'Yes! We accept urgent orders. For rush delivery requirements, contact us directly on WhatsApp at +91 9625923308 to check availability and priority shipping options.',
+  },
+  {
+    q: 'How do I choose the right size and what about margins?',
+    a: 'Please refer to our Size Chart (XS: 34", S: 36", M: 38", L: 40", XL: 42", XXL: 44", 3XL: 46" bust size). All our outfits come with an extra 2-inch inside margin for easy tailoring & alteration.',
   },
   {
     q: 'Can I place an order directly on WhatsApp?',
     a: 'Yes! You can click any "Order via WhatsApp" button or message us directly at +91 9625923308 with screenshots of your chosen outfits.',
-  },
-  {
-    q: 'What is your return & exchange policy?',
-    a: 'We offer a 7-day hassle-free return and exchange policy on all unworn items with original tags intact.',
-  },
-  {
-    q: 'Do you offer Cash on Delivery (COD)?',
-    a: 'Yes, Cash on Delivery is available across India with an extra online booking fee of ₹200. The actual dress amount is collected upon delivery at your doorstep.',
-  },
-  {
-    q: 'How do I choose the right size?',
-    a: 'Please refer to our Size Chart (S: 36", M: 38", L: 40", XL: 42", XXL: 44" bust size). All our outfits also have a 2-inch margin inside for easy alteration.',
   },
 ]

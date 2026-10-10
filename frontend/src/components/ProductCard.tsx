@@ -35,7 +35,7 @@ export function ProductCard({ product, className = '' }: ProductCardProps) {
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
-    toggleWishlist(id)
+    toggleWishlist(product)
   }
 
   const handleCardClick = () => {
@@ -47,45 +47,33 @@ export function ProductCard({ product, className = '' }: ProductCardProps) {
       onClick={handleCardClick}
       className={`group relative bg-transparent flex flex-col transition-all duration-300 cursor-pointer ${className}`}
     >
-      {/* 1. Dress Image Card Container with Rounded Corners (Tall Portrait 2:3 ratio to display dress) */}
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] aspect-[2/3] w-full border border-[#ebd5be] shadow-[0_8px_24px_rgba(196,147,50,0.22),0_2px_8px_rgba(196,147,50,0.14)] group-hover:shadow-[0_16px_38px_rgba(196,147,50,0.38),0_4px_14px_rgba(196,147,50,0.2)] group-hover:border-[#c9973a] transition-all duration-300 transform group-hover:-translate-y-1.5">
+      {/* 1. Dress Image Card Container with Rounded Corners */}
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] aspect-[3/4] sm:aspect-[2/3] w-full border border-[#ebd5be] shadow-[0_4px_16px_rgba(196,147,50,0.18)] group-hover:shadow-[0_16px_38px_rgba(196,147,50,0.38)] group-hover:border-[#c9973a] transition-all duration-300 transform group-hover:-translate-y-1.5">
 
-        {/* Crisp Dress Photo — gentle zoom on hover for a more premium feel */}
-        <div className="absolute inset-0 [&_img]:h-full [&_img]:w-full [&_img]:object-cover [&_img]:transition-transform [&_img]:duration-500 group-hover:[&_img]:scale-[1.06]">
-          <ImagePlaceholder
-            src={img}
-            alt={name}
-            aspectRatio="2/3"
-            label={name}
-          />
-        </div>
+        {/* Crisp Dress Photo */}
+        <img
+          src={img || 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932'}
+          alt={name}
+          loading="lazy"
+          className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105 block"
+          onError={(e) => {
+            const target = e.currentTarget
+            target.src = 'https://cdn.shopify.com/s/files/1/1020/9912/4593/files/79E22484-5C5D-46F7-8E73-C2646FEA540A.png?v=1789627932'
+          }}
+        />
 
-        {/* Soft gradient at the base so white text/badges (if any) and the add-to-bag bar always sit on contrast */}
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/15 to-transparent pointer-events-none" />
-
-        {/* Top-Left Badges Stack (Discount & New) — pill-shaped, on-brand gold/olive */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
-          {discountPercent && (
-            <span className="text-[10px] sm:text-[11px] font-bold tracking-tight px-2.5 py-1 text-white bg-[#c9973a] rounded-full shadow-sm">
-              {discountPercent}
-            </span>
-          )}
-          {isNew && (
-            <span className="text-[10px] sm:text-[11px] font-semibold tracking-tight px-2.5 py-1 text-white bg-[#769055] rounded-full shadow-sm">
-              New
-            </span>
-          )}
-        </div>
+        {/* Soft gradient at the base so the add-to-bag bar sits with high contrast */}
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 via-black/5 to-transparent pointer-events-none" />
 
         {/* Top-Right Wishlist Heart Box — soft glass look */}
         <button
           type="button"
           onClick={handleWishlistToggle}
-          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-sm border border-white/60 flex items-center justify-center hover:scale-110 hover:bg-white active:scale-95 transition-all z-10 cursor-pointer"
+          className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-sm border border-white/60 flex items-center justify-center hover:scale-110 hover:bg-white active:scale-95 transition-all z-10 cursor-pointer"
           aria-label={isWished ? 'Remove from wishlist' : 'Add to wishlist'}
         >
           <svg
-            className={`w-4 h-4 transition-colors ${isWished ? 'text-red-500 fill-red-500' : 'text-charcoal stroke-current fill-none hover:text-red-500'}`}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isWished ? 'text-red-500 fill-red-500' : 'text-charcoal stroke-current fill-none hover:text-red-500'}`}
             stroke="currentColor"
             viewBox="0 0 24 24"
             strokeWidth={1.8}
@@ -102,37 +90,54 @@ export function ProductCard({ product, className = '' }: ProductCardProps) {
         <button
           type="button"
           onClick={handleAddToCart}
-          className={`absolute bottom-0 inset-x-0 py-2.5 text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer z-10 translate-y-0 opacity-100 sm:translate-y-full sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 ${added ? 'bg-[#c9973a]' : 'bg-[#769055] hover:bg-[#5e7343]'
+          className={`absolute bottom-0 inset-x-0 py-2 sm:py-2.5 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer z-10 translate-y-0 opacity-100 sm:translate-y-full sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 ${added ? 'bg-[#c9973a]' : 'bg-[#769055] hover:bg-[#5e7343]'
             }`}
         >
           {added ? '✓ Added' : '+ Add to Bag'}
         </button>
       </div>
 
-      {/* 2. Product Description Section — title now reads as a small heading, not a caption */}
-      <div className="pt-3 pb-1 px-1 text-left flex flex-col gap-1">
-        {/* Category or Brand Identifier */}
-        <p className="text-[10px] sm:text-[11px] font-semibold text-[#c9973a] uppercase tracking-[0.12em] line-clamp-1">
-          {category || 'Anju Clothing'}
-        </p>
+      {/* 2. Product Description Section */}
+      <div className="pt-2 sm:pt-3 pb-1 px-0.5 text-left flex flex-col gap-0.5 sm:gap-1">
+        {/* Badges / Labels moved to description */}
+        {(product.isBestseller || tag === 'BESTSELLER' || isNew || tag === 'SALE') && (
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {(product.isBestseller || tag === 'BESTSELLER') ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3e502a] text-white text-[8px] sm:text-[9.5px] font-serif uppercase tracking-widest shadow-xs">
+                <span className="w-1 h-1 rounded-full bg-[#fae5a0]" />
+                <span>Bestseller</span>
+              </span>
+            ) : isNew ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3e502a] text-white text-[8px] sm:text-[9.5px] font-serif uppercase tracking-widest shadow-xs">
+                <span className="w-1 h-1 rounded-full bg-[#fae5a0]" />
+                <span>New Arrival</span>
+              </span>
+            ) : tag === 'SALE' ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#8c2a2a] text-white text-[8px] sm:text-[9.5px] font-serif uppercase tracking-widest shadow-xs">
+                <span className="w-1 h-1 rounded-full bg-[#ffcc66]" />
+                <span>Sale</span>
+              </span>
+            ) : null}
+          </div>
+        )}
 
         {/* Product Title — clean modern typography */}
-        <h3 className="text-sm sm:text-base font-semibold text-charcoal group-hover:text-[#769055] transition-colors line-clamp-1 leading-snug tracking-tight">
+        <h3 className="text-xs sm:text-base font-semibold text-charcoal group-hover:text-[#769055] transition-colors line-clamp-1 leading-snug tracking-tight">
           {name}
         </h3>
 
         {/* Pricing Row: Current Price + Strikethrough + Discount Label */}
-        <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
-          <span className="font-bold text-sm sm:text-base text-charcoal">
+        <div className="flex items-center flex-wrap gap-1 sm:gap-1.5 pt-0.5">
+          <span className="font-bold text-xs sm:text-base text-charcoal">
             ₹{price.toLocaleString('en-IN')}
           </span>
           {originalPrice > price && (
-            <span className="text-[10px] sm:text-xs text-stone-400 line-through">
+            <span className="text-[9px] sm:text-xs text-stone-400 line-through">
               ₹{originalPrice.toLocaleString('en-IN')}
             </span>
           )}
           {discountOffText && (
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700">
+            <span className="text-[9px] sm:text-[11px] font-bold text-emerald-700">
               ({discountOffText})
             </span>
           )}

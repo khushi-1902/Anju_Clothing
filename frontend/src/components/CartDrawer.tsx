@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useShop } from '../context/ShopContext'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { CheckoutModal } from './CheckoutModal'
+import { CouponsModal } from './CouponsModal'
 import { useUser } from '@clerk/clerk-react'
 
 export function CartDrawer() {
@@ -17,10 +18,16 @@ export function CartDrawer() {
     shippingSettings,
     toggleWishlist,
     isInWishlist,
+    appliedCoupon,
+    availableCoupons,
+    cartDiscountAmount,
+    cartTotalAfterDiscount,
+    removeCoupon,
   } = useShop()
 
   const { user } = useUser()
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
 
   // Handle Esc key to close drawer
   useEffect(() => {
@@ -35,18 +42,13 @@ export function CartDrawer() {
 
   if (!isCartOpen && !isCheckoutOpen) return null
 
-  // Free shipping progress calculations
-  const freeShippingThreshold = shippingSettings.freeThreshold || 1999
-  const amountToFreeShipping = Math.max(0, freeShippingThreshold - cartSubtotal)
-  const shippingProgress = Math.min(100, (cartSubtotal / freeShippingThreshold) * 100)
-
   // Price calculations
   const totalMRP = cart.reduce(
     (sum, item) => sum + (item.product.originalPrice || item.product.price) * item.quantity,
     0
   )
   const totalDiscount = Math.max(0, totalMRP - cartSubtotal)
-  const isFreeShipping = cartSubtotal >= freeShippingThreshold || cartSubtotal === 0
+  const isFreeShipping = true
 
   const clerkName =
     user?.fullName ||
@@ -107,33 +109,6 @@ export function CartDrawer() {
               </svg>
             </button>
           </div>
-
-          {/* 2. Free Shipping Progress Bar (Slim & Compact) */}
-          {cart.length > 0 && (
-            <div className="px-4 py-2.5 sm:px-5 bg-[#FAF5EE] border-b border-[#E8D5C0]/60 shrink-0">
-              <div className="flex items-center justify-between text-xs leading-tight">
-                {amountToFreeShipping > 0 ? (
-                  <span className="text-gray-700 text-[11px] sm:text-xs">
-                    Shop for <strong className="text-gray-900 font-bold">₹{amountToFreeShipping.toLocaleString('en-IN')}</strong> more for Free Delivery
-                  </span>
-                ) : (
-                  <span className="text-[#3e502a] font-bold text-[11px] sm:text-xs flex items-center gap-1.5">
-                    <span>✨</span>
-                    <span>Free Delivery unlocked on this order!</span>
-                  </span>
-                )}
-                <span className="text-[10px] font-mono text-gray-500 tabular-nums font-semibold">
-                  {Math.round(shippingProgress)}%
-                </span>
-              </div>
-              <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden mt-1.5">
-                <div
-                  className="h-full bg-gradient-to-r from-[#c49332] to-[#3e502a] transition-all duration-500 rounded-full"
-                  style={{ width: `${shippingProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
 
           {/* 3. Main Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 space-y-4">
@@ -281,19 +256,70 @@ export function CartDrawer() {
                   })}
                 </div>
 
-                {/* Apply Coupons Row (UI-Only) */}
-                <div className="border border-gray-200 rounded-md p-3 flex items-center justify-between bg-white text-xs font-semibold text-gray-800 cursor-pointer hover:bg-gray-50 transition-colors shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#c49332]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <span>Apply Coupons</span>
+                {/* Apply Coupons Section (Connected to Real Backend) */}
+                {appliedCoupon ? (
+                  <div className="border border-emerald-200 bg-emerald-50/70 rounded-xl p-3 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 text-sm shrink-0">
+                        🏷️
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-emerald-950 tracking-wider">
+                            {appliedCoupon.code}
+                          </span>
+                          <span className="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-1.5 py-0.2 rounded">
+                            SAVED ₹{appliedCoupon.discountAmount.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <p className="text-[10px] sm:text-[11px] text-emerald-800 truncate mt-0.5">
+                          {appliedCoupon.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsCouponModalOpen(true)}
+                        className="text-[11px] font-bold text-[#3e502a] hover:underline cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-[#3e502a] font-bold uppercase tracking-wider">
-                    <span>Apply</span>
-                    <span aria-hidden="true">›</span>
+                ) : (
+                  <div
+                    onClick={() => setIsCouponModalOpen(true)}
+                    className="border border-gray-200 rounded-xl p-3 flex items-center justify-between bg-white text-xs font-semibold text-gray-800 cursor-pointer hover:border-[#c49332]/60 hover:bg-amber-50/20 transition-all shadow-2xs group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-[#FAF5EE] border border-[#E8D5C0] flex items-center justify-center text-[#c49332] text-sm shrink-0">
+                        <svg className="w-4 h-4 text-[#c49332]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900">Have a Coupon Code?</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-normal mt-0.5">
+                          Enter exclusive discount code provided by admin
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] text-[#3e502a] group-hover:text-[#2d3a1f] font-bold uppercase tracking-wider">
+                      <span>Enter</span>
+                      <span aria-hidden="true">›</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Price Details Section */}
                 <div className="border border-gray-200 rounded-md p-3.5 bg-white space-y-2 text-xs shadow-2xs">
@@ -317,6 +343,15 @@ export function CartDrawer() {
                     </div>
                   )}
 
+                  {cartDiscountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-semibold bg-emerald-50/80 px-2 py-1 rounded-md border border-emerald-100">
+                      <span className="flex items-center gap-1">
+                        <span>🏷️</span> Coupon ({appliedCoupon?.code})
+                      </span>
+                      <span className="tabular-nums">-₹{cartDiscountAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping Fee</span>
                     <span>
@@ -331,7 +366,7 @@ export function CartDrawer() {
                   <div className="flex justify-between items-baseline pt-2 border-t border-gray-200 text-sm">
                     <span className="font-bold text-gray-900">Total Amount</span>
                     <span className="font-bold text-base text-gray-900 tabular-nums">
-                      ₹{cartSubtotal.toLocaleString('en-IN')}
+                      ₹{cartTotalAfterDiscount.toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
@@ -351,7 +386,7 @@ export function CartDrawer() {
                 <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                <span>Place Order • ₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                <span>Place Order • ₹{cartTotalAfterDiscount.toLocaleString('en-IN')}</span>
               </button>
 
               {/* Trust Badges: SSL Secure & 100% Authentic */}
@@ -369,6 +404,12 @@ export function CartDrawer() {
           )}
         </div>
       </div>
+
+      {/* Coupons Modal */}
+      <CouponsModal
+        isOpen={isCouponModalOpen}
+        onClose={() => setIsCouponModalOpen(false)}
+      />
 
       {/* Checkout Modal */}
       <CheckoutModal

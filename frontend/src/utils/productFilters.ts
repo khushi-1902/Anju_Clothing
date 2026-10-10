@@ -159,7 +159,7 @@ export function getActiveFilterChips(
     chips.push({
       id: `size:${value}`,
       label: `Size: ${labelOf(facets.sizes, value)}`,
-      remove: f => ({ ...f, sizes: f.sizes.filter(v => v !== value) }),
+      remove: f => ({ ...f, sizes: f.sizes.filter(v => v.toLowerCase() !== value.toLowerCase()) }),
     })
   )
 
@@ -167,7 +167,7 @@ export function getActiveFilterChips(
     chips.push({
       id: `color:${value}`,
       label: `Color: ${labelOf(facets.colors, value)}`,
-      remove: f => ({ ...f, colors: f.colors.filter(v => v !== value) }),
+      remove: f => ({ ...f, colors: f.colors.filter(v => v.toLowerCase() !== value.toLowerCase()) }),
     })
   )
 
@@ -175,7 +175,7 @@ export function getActiveFilterChips(
     chips.push({
       id: `fabric:${value}`,
       label: `Fabric: ${labelOf(facets.fabrics, value)}`,
-      remove: f => ({ ...f, fabrics: f.fabrics.filter(v => v !== value) }),
+      remove: f => ({ ...f, fabrics: f.fabrics.filter(v => v.toLowerCase() !== value.toLowerCase()) }),
     })
   )
 
@@ -183,7 +183,7 @@ export function getActiveFilterChips(
     chips.push({
       id: `occasion:${value}`,
       label: `Occasion: ${labelOf(facets.occasions, value)}`,
-      remove: f => ({ ...f, occasions: f.occasions.filter(v => v !== value) }),
+      remove: f => ({ ...f, occasions: f.occasions.filter(v => v.toLowerCase() !== value.toLowerCase()) }),
     })
   )
 

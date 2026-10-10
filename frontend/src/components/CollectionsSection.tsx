@@ -124,7 +124,7 @@ function CollectionArchCard({ category }: { category: ApiCategory }) {
         <div className="relative w-full rounded-t-[97px] sm:rounded-t-[117px] md:rounded-t-[137px] rounded-b-[13px] overflow-hidden bg-[#faf5ee]">
           
           {/* Full-Length Portrait Image Frame */}
-          <div className="relative w-full aspect-[1/2.02] sm:aspect-[1/2.06] overflow-hidden bg-[#faf5ee]">
+          <div className="relative w-full aspect-[3/4.8] sm:aspect-[1/2] overflow-hidden bg-[#faf5ee]">
             <img
               src={imgSrc}
               alt={`${category.name} Ethnic Wear Collection`}
@@ -134,7 +134,7 @@ function CollectionArchCard({ category }: { category: ApiCategory }) {
             />
 
             {/* Subtle bottom gradient to ensure badge contrast */}
-            <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/25 via-black/5 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/30 via-black/10 to-transparent pointer-events-none" />
           </div>
 
           {/* 
@@ -217,18 +217,18 @@ export function CollectionsSection() {
           <div className="flex flex-col items-center text-center">
             <LotusCrest />
 
-            <div className="mt-2 flex items-center w-full max-w-2xl gap-3 sm:gap-5">
+            <div className="mt-2 flex items-center justify-center w-full max-w-2xl gap-2 sm:gap-4 md:gap-5 px-2">
               <SideRule side="left" />
               <h2
                 id="collections-heading"
-                className="shrink-0 font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#3e502a] tracking-wide leading-tight"
+                className="font-serif text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-[#3e502a] tracking-tight sm:tracking-wide leading-tight text-center"
               >
                 Explore Our Collections
               </h2>
               <SideRule side="right" />
             </div>
 
-            <p className="mt-3 sm:mt-4 text-[#6d5b52] font-serif italic text-sm sm:text-base leading-relaxed max-w-md">
+            <p className="mt-2.5 sm:mt-3.5 text-[#6d5b52] font-serif italic text-xs sm:text-sm md:text-base leading-relaxed max-w-md px-2">
               Handcrafted ensembles celebrating Indian heritage & festive charm
             </p>
           </div>
@@ -262,12 +262,12 @@ export function CollectionsSection() {
             <LotusCrest />
 
             {/* Heading with gold rules on both sides */}
-            <div className="mt-2 flex items-center w-full max-w-2xl gap-3 sm:gap-5">
+            <div className="mt-2 flex items-center justify-center w-full max-w-2xl gap-2 sm:gap-4 md:gap-5 px-2">
               <SideRule side="left" />
 
               <h2
                 id="collections-heading"
-                className="shrink-0 font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#3e502a] tracking-wide leading-tight"
+                className="font-serif text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-[#3e502a] tracking-tight sm:tracking-wide leading-tight text-center"
               >
                 Explore Our Collections
               </h2>
@@ -275,7 +275,7 @@ export function CollectionsSection() {
               <SideRule side="right" />
             </div>
 
-            <p className="mt-3 sm:mt-4 text-[#6d5b52] font-serif italic text-sm sm:text-base leading-relaxed max-w-md">
+            <p className="mt-2.5 sm:mt-3.5 text-[#6d5b52] font-serif italic text-xs sm:text-sm md:text-base leading-relaxed max-w-md px-2">
               Handcrafted ensembles celebrating Indian heritage & festive charm
             </p>
           </div>
@@ -289,10 +289,10 @@ export function CollectionsSection() {
         */}
         <MobileSlider
           itemCount={displayedCategories.length}
-          desktopGridClassName="md:grid-cols-3 lg:grid-cols-6"
+          desktopGridClassName="lg:grid-cols-6"
           showDesktopArrows={false}
           indicatorType="bar"
-          gapClassName="gap-3.5 sm:gap-4 md:gap-5"
+          gapClassName="gap-3.5 sm:gap-4 md:gap-5 lg:gap-6"
         >
           {displayedCategories.map((cat) => (
             <CollectionArchCard key={cat.slug} category={cat} />

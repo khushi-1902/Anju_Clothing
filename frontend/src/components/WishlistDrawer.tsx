@@ -1,10 +1,12 @@
 import { useShop } from '../context/ShopContext'
 import { PRODUCTS } from '../data/products'
+import type { Product } from '../types'
 import { ImagePlaceholder } from './ImagePlaceholder'
 
 export function WishlistDrawer() {
   const {
     wishlist,
+    wishlistProducts,
     isWishlistOpen,
     closeWishlist,
     toggleWishlist,
@@ -14,14 +16,25 @@ export function WishlistDrawer() {
 
   if (!isWishlistOpen) return null
 
-  const wishedProducts = PRODUCTS.filter(p => wishlist.includes(p.id))
+  // Merge full saved wishlistProducts with any PRODUCTS fallback matching wishlist IDs
+  const allAvailable = [...(wishlistProducts || []), ...PRODUCTS]
+  const uniqueMap = new Map<string, Product>()
+  for (const p of allAvailable) {
+    if (p && p.id && !uniqueMap.has(String(p.id).toLowerCase())) {
+      uniqueMap.set(String(p.id).toLowerCase(), p)
+    }
+  }
+
+  const wishedProducts: Product[] = wishlist
+    .map(id => uniqueMap.get(String(id).toLowerCase()))
+    .filter((p): p is Product => Boolean(p))
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
       {/* Dark Backdrop */}
       <div
         onClick={closeWishlist}
-        className="fixed inset-0 bg-charcoal/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer"
       />
 
       <div className="fixed inset-y-0 right-0 w-full max-w-full sm:max-w-md flex pl-0 sm:pl-10 z-50 pointer-events-none">

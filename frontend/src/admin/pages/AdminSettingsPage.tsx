@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { useAuth, useUser } from '@clerk/clerk-react'
-import { fetchAdminSettings, updateAdminSettings, StoreSettings, RawSettingItem } from '../adminApi'
+import { useAuth } from '@clerk/clerk-react'
+import { fetchAdminSettings, updateAdminSettings, RawSettingItem } from '../adminApi'
 
 const COURIER_OPTIONS = ['Blue Dart Express', 'Delhivery', 'DTDC Express', 'India Post Speed Post', 'Shiprocket Express', 'Shadowfax']
 
 export function AdminSettingsPage() {
   const { getToken } = useAuth()
-  const { user } = useUser()
 
   // Form states
   const [defaultCourier, setDefaultCourier] = useState('Blue Dart Express')
@@ -91,55 +90,55 @@ export function AdminSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12 text-charcoal">
+    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-8 sm:pb-12 font-sans text-[#232B1E]">
       
       {/* Toast Alert */}
       {toastMessage && (
         <div
-          className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 ${
+          className={`fixed bottom-4 sm:bottom-6 right-4 sm:right-6 left-4 sm:left-auto z-50 p-3.5 sm:p-4 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-semibold animate-in slide-in-from-bottom-3 duration-200 ${
             toastMessage.type === 'success'
-              ? 'bg-emerald-900 text-white border-emerald-700'
-              : 'bg-red-900 text-white border-red-700'
+              ? 'bg-[#233019] text-white border-[#344426]'
+              : 'bg-rose-900 text-white border-rose-700'
           }`}
         >
-          <span>{toastMessage.type === 'success' ? '✅' : '⚠️'}</span>
-          <span>{toastMessage.text}</span>
+          <span>{toastMessage.type === 'success' ? '✓' : '⚠️'}</span>
+          <span className="flex-1 truncate">{toastMessage.text}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#202223] tracking-tight">
+          <h1 className="text-lg sm:text-xl font-bold text-[#1B2513] tracking-tight">
             Shipping & Store Settings
           </h1>
-          <p className="text-xs text-[#6D7175] mt-0.5">
-            Configure delivery fees, free shipping thresholds, couriers, and store contact info stored in PostgreSQL.
+          <p className="text-xs text-[#5D6F4E] mt-0.5">
+            Configure delivery fees, free shipping thresholds, couriers, and contact information.
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
         
         {/* Card 1: Shipping & Delivery Configuration */}
-        <div className="bg-white p-5 sm:p-7 rounded-xl border border-[#E1E3E5] shadow-xs space-y-5">
-          <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-[#E3E9DD] shadow-2xs space-y-4">
+          <div className="border-b border-[#EBEFE6] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-[#202223] flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-bold text-[#1B2513] flex items-center gap-2">
                 <span>🚚</span> Shipping Rates & Delivery Thresholds
               </h2>
-              <p className="text-xs text-[#6D7175] mt-0.5">
-                These rates dynamically calculate customer checkout shipping costs and courier labels.
+              <p className="text-[11px] sm:text-xs text-[#5D6F4E] mt-0.5">
+                Dynamic calculations for checkout shipping costs and delivery estimates.
               </p>
             </div>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 text-[10px] font-bold uppercase rounded border border-emerald-200">
-              Live Checkout Connected
+            <span className="self-start sm:self-auto px-2 py-0.5 bg-emerald-50 text-emerald-800 text-[10px] font-semibold uppercase rounded border border-emerald-200">
+              Live Connected
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 text-xs">
             <div>
-              <label className="block font-bold text-[#202223] mb-1">
+              <label className="block font-bold text-[#202E15] mb-1">
                 Default Courier Carrier
               </label>
               <input
@@ -149,18 +148,18 @@ export function AdminSettingsPage() {
                 placeholder="e.g. Blue Dart Express"
                 value={defaultCourier}
                 onChange={(e) => setDefaultCourier(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-medium"
+                className="w-full px-3.5 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-medium text-[#232B1E]"
               />
               <datalist id="courier-options">
                 {COURIER_OPTIONS.map((c) => (
                   <option key={c} value={c} />
                 ))}
               </datalist>
-              <p className="text-[10px] text-gray-500 mt-1">Default carrier assigned when fulfilling customer orders.</p>
+              <p className="text-[10px] text-[#7A8E6A] mt-1">Default carrier assigned on customer orders.</p>
             </div>
 
             <div>
-              <label className="block font-bold text-[#202223] mb-1">
+              <label className="block font-bold text-[#202E15] mb-1">
                 Estimated Delivery Timeline Text
               </label>
               <input
@@ -169,17 +168,17 @@ export function AdminSettingsPage() {
                 placeholder="e.g. 3–5 Business Days"
                 value={estimatedDelivery}
                 onChange={(e) => setEstimatedDelivery(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-medium"
+                className="w-full px-3.5 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-medium text-[#232B1E]"
               />
-              <p className="text-[10px] text-gray-500 mt-1">Displayed on the product detail page and checkout review.</p>
+              <p className="text-[10px] text-[#7A8E6A] mt-1">Displayed on the product detail page and checkout.</p>
             </div>
 
             <div>
-              <label className="block font-bold text-[#202223] mb-1">
+              <label className="block font-bold text-[#202E15] mb-1">
                 Flat Standard Shipping Fee (₹)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs font-bold text-gray-400">₹</span>
+                <span className="absolute left-3 top-2 text-xs font-bold text-gray-400">₹</span>
                 <input
                   type="number"
                   required
@@ -187,18 +186,18 @@ export function AdminSettingsPage() {
                   placeholder="99"
                   value={flatFee}
                   onChange={(e) => setFlatFee(e.target.value)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold"
+                  className="w-full pl-7 pr-3 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold text-[#232B1E]"
                 />
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">Charged on orders below the free shipping threshold.</p>
+              <p className="text-[10px] text-[#7A8E6A] mt-1">Charged on orders below the free shipping threshold.</p>
             </div>
 
             <div>
-              <label className="block font-bold text-[#202223] mb-1">
+              <label className="block font-bold text-[#202E15] mb-1">
                 Free Shipping Order Threshold (₹)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs font-bold text-gray-400">₹</span>
+                <span className="absolute left-3 top-2 text-xs font-bold text-gray-400">₹</span>
                 <input
                   type="number"
                   required
@@ -206,18 +205,18 @@ export function AdminSettingsPage() {
                   placeholder="1999"
                   value={freeThreshold}
                   onChange={(e) => setFreeThreshold(e.target.value)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold text-emerald-900"
+                  className="w-full pl-7 pr-3 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold text-emerald-900"
                 />
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">Cart totals at or above this amount receive complimentary free delivery.</p>
+              <p className="text-[10px] text-[#7A8E6A] mt-1">Orders at or above this amount receive free delivery.</p>
             </div>
 
-            <div>
-              <label className="block font-bold text-[#202223] mb-1">
-                COD Extra Online Booking Fee (₹)
+            <div className="sm:col-span-2">
+              <label className="block font-bold text-[#202E15] mb-1">
+                COD Extra Advance Online Booking Fee (₹)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs font-bold text-gray-400">₹</span>
+                <span className="absolute left-3 top-2 text-xs font-bold text-gray-400">₹</span>
                 <input
                   type="number"
                   required
@@ -225,24 +224,24 @@ export function AdminSettingsPage() {
                   placeholder="200"
                   value={codAdvanceAmount}
                   onChange={(e) => setCodAdvanceAmount(e.target.value)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold text-amber-900"
+                  className="w-full pl-7 pr-3 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] font-bold text-amber-900"
                 />
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">Extra fee paid online to confirm COD order (full actual dress price is paid on delivery).</p>
+              <p className="text-[10px] text-[#7A8E6A] mt-1">Online advance fee to confirm COD order (full dress price is paid on delivery).</p>
             </div>
           </div>
 
           {/* Live Preview Box */}
-          <div className="bg-gradient-to-r from-[#FAF8F5] to-amber-50/40 p-4 rounded-xl border border-[#EBE4D8] space-y-2 text-xs">
-            <h4 className="font-bold text-[#202223] flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[#C9973A]">
+          <div className="bg-[#FAF8F5] p-3.5 sm:p-4 rounded-xl border border-[#EBE4D8] space-y-2 text-xs">
+            <h4 className="font-bold text-[#202E15] flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[#C9973A]">
               <span>💡</span> Live Checkout Customer Preview
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-1">
               <div className="bg-white p-3 rounded-lg border border-gray-200">
                 <p className="font-semibold text-gray-500 text-[11px]">Cart: ₹1,499 (&lt; ₹{freeThreshold})</p>
                 <div className="flex justify-between font-bold text-xs mt-1">
                   <span>Shipping:</span>
-                  <span className="text-charcoal">+₹{flatFee}</span>
+                  <span className="text-[#1B2513]">+₹{flatFee}</span>
                 </div>
               </div>
               <div className="bg-white p-3 rounded-lg border border-emerald-200">
@@ -254,14 +253,14 @@ export function AdminSettingsPage() {
               </div>
               <div className="bg-white p-3 rounded-lg border border-amber-300">
                 <p className="font-semibold text-amber-900 text-[11px]">COD Order: ₹2,499 Dress</p>
-                <div className="text-[11px] font-bold text-charcoal mt-1 space-y-0.5">
+                <div className="text-[11px] font-bold text-[#1B2513] mt-1 space-y-0.5">
                   <div className="flex justify-between text-amber-800">
-                    <span>Extra Fee (Online Now):</span>
+                    <span>Extra Fee (Online):</span>
                     <span>+₹{codAdvanceAmount}</span>
                   </div>
                   <div className="flex justify-between text-emerald-900">
                     <span>Pay on Delivery:</span>
-                    <span>₹2,499 (Actual Price)</span>
+                    <span>₹2,499</span>
                   </div>
                 </div>
               </div>
@@ -270,51 +269,51 @@ export function AdminSettingsPage() {
         </div>
 
         {/* Card 2: Storefront Contact & Announcement Banner */}
-        <div className="bg-white p-5 sm:p-7 rounded-xl border border-[#E1E3E5] shadow-xs space-y-4 text-xs">
-          <div className="border-b border-gray-100 pb-3">
-            <h2 className="text-sm font-bold text-[#202223] flex items-center gap-2">
-              <span>📣</span> Storefront Announcement & Customer Support
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-[#E3E9DD] shadow-2xs space-y-4 text-xs">
+          <div className="border-b border-[#EBEFE6] pb-3">
+            <h2 className="text-xs sm:text-sm font-bold text-[#1B2513] flex items-center gap-2">
+              <span>📣</span> Storefront Announcement & Support
             </h2>
-            <p className="text-xs text-[#6D7175] mt-0.5">
-              Contact numbers and promo banner displayed across the top announcement bar.
+            <p className="text-[11px] sm:text-xs text-[#5D6F4E] mt-0.5">
+              Contact numbers and promo banner displayed across the header and footer.
             </p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="block font-bold text-[#202223] mb-1">
+              <label className="block font-bold text-[#202E15] mb-1">
                 Top Announcement Bar Promo Text
               </label>
               <input
                 type="text"
                 value={announcementText}
                 onChange={(e) => setAnnouncementText(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055]"
+                className="w-full px-3.5 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] text-[#232B1E] font-medium"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               <div>
-                <label className="block font-bold text-[#202223] mb-1">
-                  WhatsApp & Support Hotline
+                <label className="block font-bold text-[#202E15] mb-1">
+                  WhatsApp & Support Phone
                 </label>
                 <input
                   type="text"
                   value={supportPhone}
                   onChange={(e) => setSupportPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055]"
+                  className="w-full px-3.5 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] text-[#232B1E] font-mono text-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[#202223] mb-1">
+                <label className="block font-bold text-[#202E15] mb-1">
                   Customer Support Email
                 </label>
                 <input
                   type="email"
                   value={supportEmail}
                   onChange={(e) => setSupportEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-gray-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#769055]"
+                  className="w-full px-3.5 py-2 bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:bg-white focus:outline-none focus:border-[#769055] text-[#232B1E] font-mono text-xs"
                 />
               </div>
             </div>
@@ -322,11 +321,11 @@ export function AdminSettingsPage() {
         </div>
 
         {/* Action Button */}
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end pt-1">
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-3 bg-[#769055] hover:bg-[#5e7343] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-md cursor-pointer flex items-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#769055] hover:bg-[#5e7343] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
           >
             {saving ? (
               <>
@@ -341,17 +340,17 @@ export function AdminSettingsPage() {
       </form>
 
       {/* Card 3: PostgreSQL store_settings Key-Value Inspector Table */}
-      <div className="bg-white rounded-xl border border-[#E1E3E5] shadow-xs overflow-hidden mt-6">
-        <div className="p-4 bg-[#FAF8F5] border-b border-[#EBE4D8] flex items-center justify-between">
+      <div className="bg-white rounded-xl border border-[#E3E9DD] shadow-2xs overflow-hidden mt-6">
+        <div className="p-3.5 sm:p-4 bg-[#FAF8F5] border-b border-[#EBE4D8] flex items-center justify-between">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#202223]">
-              🗄️ PostgreSQL `store_settings` Key-Value Table
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#1B2513]">
+              🗄️ Database Key-Value Inspector
             </h3>
             <p className="text-[11px] text-[#6D7175]">
-              Real-time database key-values driving checkout and storefront services.
+              Real-time values driving checkout and storefront services.
             </p>
           </div>
-          <span className="text-[11px] font-mono text-gray-500">
+          <span className="text-[11px] font-mono text-gray-500 hidden sm:inline">
             {rawSettings.length} keys in database
           </span>
         </div>
@@ -362,18 +361,18 @@ export function AdminSettingsPage() {
               <tr className="border-b border-gray-100 text-[10px] font-bold text-[#6D7175] uppercase tracking-wider bg-white">
                 <th className="py-2.5 px-4 font-mono">Key</th>
                 <th className="py-2.5 px-4">Value</th>
-                <th className="py-2.5 px-4">Description</th>
-                <th className="py-2.5 px-4 text-right">Last Updated</th>
+                <th className="py-2.5 px-4 hidden sm:table-cell">Description</th>
+                <th className="py-2.5 px-4 text-right">Updated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rawSettings.map((s) => (
                 <tr key={s.key} className="hover:bg-gray-50/60 font-mono text-[11px]">
                   <td className="py-2.5 px-4 font-bold text-[#769055]">{s.key}</td>
-                  <td className="py-2.5 px-4 font-semibold text-charcoal">{s.value}</td>
-                  <td className="py-2.5 px-4 text-gray-500 font-sans text-xs">{s.description || '—'}</td>
-                  <td className="py-2.5 px-4 text-right text-gray-400 text-[10px]">
-                    {s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString('en-IN') : 'Just now'}
+                  <td className="py-2.5 px-4 font-semibold text-[#1B2513] truncate max-w-[140px] sm:max-w-none">{s.value}</td>
+                  <td className="py-2.5 px-4 text-gray-500 font-sans text-xs hidden sm:table-cell">{s.description || '—'}</td>
+                  <td className="py-2.5 px-4 text-right text-gray-400 text-[10px] whitespace-nowrap">
+                    {s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString('en-IN') : 'Recent'}
                   </td>
                 </tr>
               ))}

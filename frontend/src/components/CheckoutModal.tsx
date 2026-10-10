@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUser, useAuth, SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
+import { useUser, useAuth, SignedOut, SignInButton } from '@clerk/clerk-react'
 import { useShop } from '../context/ShopContext'
 import { createOrder, createPaymentOrder, verifyPayment } from '../lib/api'
 import { loadRazorpayScript } from '../lib/razorpay'
+import anjuLogo from '../assets/anju-clothing-logo.svg'
+import { RazorpayLogo } from './RazorpayLogo'
 
 interface CheckoutModalProps {
   isOpen: boolean
@@ -11,13 +13,23 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
-  const { cart, cartSubtotal, clearCart, closeCart, shippingSettings } = useShop()
+  const {
+    cart,
+    cartSubtotal,
+    clearCart,
+    closeCart,
+    shippingSettings,
+    appliedCoupon,
+    cartDiscountAmount,
+    cartTotalAfterDiscount,
+  } = useShop()
   const { user } = useUser()
   const { getToken, isSignedIn } = useAuth()
   const navigate = useNavigate()
 
   // Steps: 'address' | 'payment'
   const [activeStep, setActiveStep] = useState<'address' | 'payment'>('address')
+  const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false)
 
   // Form states
   const [name, setName] = useState('')
@@ -56,10 +68,9 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
   if (!isOpen) return null
 
-  const freeShippingThreshold = shippingSettings.freeThreshold || 1999
-  const flatShippingFee = shippingSettings.flatFee ?? 99
-  const shippingFee = cartSubtotal >= freeShippingThreshold ? 0 : flatShippingFee
-  const totalAmount = cartSubtotal + shippingFee
+  const shippingFee = 0
+  const discountAmount = cartDiscountAmount
+  const totalAmount = cartTotalAfterDiscount
   const codExtraFee = shippingSettings.codAdvanceAmount ?? 200
 
   // Amount customer pays online right now
@@ -150,75 +161,95 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         }
 
         return {
+          productId: Number(item.product.id) || undefined,
           productVariantId: variantId,
+          name: item.product.name,
+          price: item.product.price,
           quantity: item.quantity,
+          size: item.selectedSize,
+          color: item.selectedColor,
+          imageUrl: item.product.img,
         }
       })
 
-      const isCod = paymentMethod === 'COD'
-      const backendPaymentMethod = isCod ? 'COD' : 'PREPAID'
-      const notes = isCod
-        ? `COD Order: Extra ₹${codExtraFee} advance courier booking charge paid online. Rs. ${totalAmount.toLocaleString('en-IN')}.00 due on delivery.`
-        : 'Full online payment order.'
+      const isCodMethod = paymentMethod === 'COD'
 
-      // 1. Create Internal Order
-      const newOrder = await createOrder(
+      // 1. Create order in PostgreSQL
+      const order = await createOrder(
         {
-          items,
-          paymentMethod: backendPaymentMethod,
           customerName: name.trim(),
-          customerEmail: email.trim().toLowerCase(),
+          customerEmail: email.trim(),
           customerPhone: phone.trim(),
           shippingAddress: {
-            street: `${street.trim()} (${addressType})`.slice(0, 200),
-            city: city.trim().slice(0, 100),
-            state: (state.trim() || 'India').slice(0, 100),
-            pincode: pincode.trim().slice(0, 6),
-            country: 'India',
+            street: street.trim(),
+            city: city.trim(),
+            state: state.trim() || 'India',
+            pincode: pincode.trim(),
+            addressType,
           },
-          notes,
+          items,
+          subtotal: cartSubtotal,
+          shippingFee,
+          discountAmount,
+          couponCode: appliedCoupon?.code,
+          totalAmount,
+          paymentMethod: isCodMethod ? 'COD' : 'PREPAID',
+          amountPayableNow,
+          amountDueOnDelivery: isCodMethod ? totalAmount : 0,
         },
         token
       )
 
-      // 2. Create Razorpay Payment Order
-      const paymentOrder = await createPaymentOrder(newOrder.orderNumber, token)
-
-      // 3. Load Razorpay Checkout.js
+      // 2. Load Razorpay checkout script
       const scriptLoaded = await loadRazorpayScript()
       if (!scriptLoaded) {
-        throw new Error('Payment gateway failed to load. Please check your internet connection.')
+        throw new Error('Razorpay payment gateway failed to initialize. Please check your connection.')
       }
 
-      // 4. Launch Razorpay Checkout Modal
+      // 3. Create Gateway Payment Order
+      const paymentOrderData = await createPaymentOrder(
+        {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        },
+        token
+      )
+
+      // 4. Open Razorpay Gateway
       const options = {
-        key: paymentOrder.keyId,
-        amount: paymentOrder.amount,
-        currency: paymentOrder.currency || 'INR',
-        name: 'Anju Clothing',
-        description: isCod
-          ? `Advance COD Booking Fee (₹${paymentOrder.amountPayableNow})`
-          : `Order #${newOrder.orderNumber}`,
-        order_id: paymentOrder.razorpayOrderId,
+        key: paymentOrderData.keyId,
+        amount: paymentOrderData.amount,
+        currency: paymentOrderData.currency,
+        name: 'ANJU CLOTHING',
+        description: isCodMethod
+          ? `COD Advance Courier Booking Fee for Order #${order.orderNumber}`
+          : `Full Payment for Order #${order.orderNumber}`,
+        image: '/assets/anju-clothing-logo.svg',
+        order_id: paymentOrderData.razorpayOrderId,
         prefill: {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim(),
           contact: phone.trim(),
         },
         theme: {
           color: '#769055',
         },
-        handler: async function (response: {
-          razorpay_order_id: string
-          razorpay_payment_id: string
-          razorpay_signature: string
-        }) {
+        handler: async function (response: any) {
           try {
-            await verifyPayment(response, token)
+            await verifyPayment(
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              token
+            )
+
             clearCart()
             closeCart()
+            setIsSubmitting(false)
             onClose()
-            navigate(`/track/${newOrder.orderNumber}`)
+            navigate('/orders')
           } catch (verifyErr: any) {
             setErrorMessage(verifyErr.message || 'Payment verification failed. Please contact support.')
             setIsSubmitting(false)
@@ -244,74 +275,111 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 lg:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-in fade-in duration-200">
       
-      {/* Container */}
-      <div className="relative w-full max-w-4xl bg-[#F5F5F6] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] border border-gray-200">
+      {/* Container: Full height on mobile screens, elegant rounded card on sm+ */}
+      <div className="relative w-full max-w-4xl bg-[#F5F5F6] sm:rounded-2xl rounded-none shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto max-h-full sm:max-h-[92vh] border-0 sm:border sm:border-gray-200">
         
-        {/* Header Bar */}
-        <header className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3.5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="font-serif tracking-widest font-bold text-sm sm:text-base text-[#2C2420]">
-              ANJU CLOTHING
-            </span>
-            <span className="hidden sm:inline-block w-px h-4 bg-gray-300"></span>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">
-              <span>🔒</span> 100% Secure Checkout
-            </span>
+        {/* Header Bar: Stacked neatly on mobile, unified on desktop */}
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 sm:py-3.5 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <img
+                src={anjuLogo}
+                alt="Anju Clothing"
+                className="h-7 sm:h-9 w-auto max-w-[130px] sm:max-w-[180px] object-contain"
+              />
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-700 font-semibold uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">
+                <span>🔒</span> <span className="hidden xs:inline">100%</span> Secure
+              </span>
+            </div>
+
+            {/* Desktop Stepper */}
+            <div className="hidden sm:flex items-center gap-2 sm:gap-4 text-xs font-bold tracking-wider">
+              <button
+                type="button"
+                onClick={() => setActiveStep('address')}
+                className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeStep === 'address' ? 'text-[#769055] font-extrabold' : 'text-gray-400'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                  activeStep === 'address' ? 'bg-[#769055] text-white' : 'bg-gray-200 text-gray-600'
+                }`}>1</span>
+                <span>ADDRESS</span>
+              </button>
+
+              <span className="text-gray-300">———</span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (validateAddress()) setActiveStep('payment')
+                }}
+                className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeStep === 'payment' ? 'text-[#769055] font-extrabold' : 'text-gray-400'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                  activeStep === 'payment' ? 'bg-[#769055] text-white' : 'bg-gray-200 text-gray-600'
+                }`}>2</span>
+                <span>PAYMENT</span>
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors text-base font-bold cursor-pointer"
+              aria-label="Close"
+            >
+              ✕
+            </button>
           </div>
 
-          {/* Stepper */}
-          <div className="flex items-center gap-2 sm:gap-4 text-xs font-bold tracking-wider">
+          {/* Mobile Stepper Bar (Dedicated clean row on small screens) */}
+          <div className="flex sm:hidden items-center justify-center gap-3 pt-2.5 mt-2 border-t border-gray-100 text-[11px] font-bold tracking-wider">
             <button
               type="button"
               onClick={() => setActiveStep('address')}
-              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 transition-colors ${
                 activeStep === 'address' ? 'text-[#769055] font-extrabold' : 'text-gray-400'
               }`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 activeStep === 'address' ? 'bg-[#769055] text-white' : 'bg-gray-200 text-gray-600'
               }`}>1</span>
               <span>ADDRESS</span>
             </button>
 
-            <span className="text-gray-300">———</span>
+            <span className="text-gray-300">——</span>
 
             <button
               type="button"
               onClick={() => {
                 if (validateAddress()) setActiveStep('payment')
               }}
-              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 transition-colors ${
                 activeStep === 'payment' ? 'text-[#769055] font-extrabold' : 'text-gray-400'
               }`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 activeStep === 'payment' ? 'bg-[#769055] text-white' : 'bg-gray-200 text-gray-600'
               }`}>2</span>
               <span>PAYMENT</span>
             </button>
           </div>
-
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors text-base font-bold cursor-pointer"
-            aria-label="Close"
-          >
-            ✕
-          </button>
         </header>
 
         {/* Member login banner */}
         <SignedOut>
           <div className="bg-amber-50 border-b border-amber-200/80 px-4 sm:px-8 py-2.5 flex items-center justify-between text-xs text-amber-950 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 truncate mr-2">
               <span>✨</span>
-              <span>Already a member? Sign in to autofill addresses & track deliveries.</span>
+              <span className="truncate">Already a member? Sign in to autofill details.</span>
             </div>
             <SignInButton mode="modal">
-              <button className="font-bold underline text-[#769055] hover:text-[#5e7343] cursor-pointer">
+              <button className="font-bold underline text-[#769055] hover:text-[#5e7343] shrink-0 cursor-pointer">
                 Log In →
               </button>
             </SignInButton>
@@ -326,24 +394,99 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
           </div>
         )}
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        {/* Mobile Accordion Order Summary Header (Quick preview at the top on phones) */}
+        <div className="lg:hidden bg-white border-b border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
+            className="w-full px-4 py-2.5 flex items-center justify-between text-xs cursor-pointer select-none"
+          >
+            <div className="flex items-center gap-1.5 font-bold text-charcoal">
+              <span>🛍️ Bag Summary ({cart.length} {cart.length === 1 ? 'item' : 'items'})</span>
+              <span className="text-[#769055] font-semibold text-[11px]">
+                {isMobileSummaryOpen ? '▲ Hide' : '▼ Details'}
+              </span>
+            </div>
+            <div className="font-extrabold text-[#769055] text-sm tabular-nums">
+              ₹{amountPayableNow.toLocaleString('en-IN')}
+            </div>
+          </button>
+
+          {/* Expandable Bag Preview */}
+          {isMobileSummaryOpen && (
+            <div className="p-4 bg-[#FAF8F5] border-t border-gray-100 space-y-3 animate-in slide-in-from-top-2 duration-150">
+              <div className="max-h-40 overflow-y-auto divide-y divide-gray-200/60 pr-1 space-y-2">
+                {cart.map((item, idx) => (
+                  <div key={idx} className="pt-2 first:pt-0 flex items-center gap-2.5">
+                    {item.product.img ? (
+                      <img
+                        src={item.product.img}
+                        alt={item.product.name}
+                        className="w-10 h-12 object-cover rounded-md bg-gray-100 border border-gray-200 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-12 bg-gray-100 rounded-md flex items-center justify-center text-sm shrink-0">
+                        👗
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-charcoal truncate">{item.product.name}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                        {item.selectedSize && <span>Size: {item.selectedSize}</span>}
+                        <span>Qty: {item.quantity}</span>
+                      </div>
+                      <p className="text-xs font-bold text-[#769055]">
+                        ₹{((item.product.price || 0) * item.quantity).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-gray-200 text-[11px] space-y-1">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal</span>
+                  <span>₹{cartSubtotal.toLocaleString('en-IN')}.00</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-semibold">
+                    <span>Coupon ({appliedCoupon?.code})</span>
+                    <span>-₹{discountAmount.toLocaleString('en-IN')}.00</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-gray-600">
+                  <span>Shipping</span>
+                  <span className="font-bold text-emerald-700">FREE</span>
+                </div>
+                {paymentMethod === 'COD' && (
+                  <div className="flex justify-between text-amber-900 font-bold bg-amber-50 p-1.5 rounded">
+                    <span>COD Advance Courier Fee</span>
+                    <span>+₹{codExtraFee}.00</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Main Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8">
             
             {/* Left Column: Form & Payment Methods (7 Cols) */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-5">
               
               {activeStep === 'address' ? (
                 /* Address Form */
-                <form id="address-form" onSubmit={handleProceedToPayment} className="bg-white p-5 sm:p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+                <form id="address-form" onSubmit={handleProceedToPayment} className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h2 className="text-xs font-extrabold uppercase tracking-wider text-charcoal flex items-center gap-2">
                       <span>📍</span> Delivery Address Details
                     </h2>
-                    <span className="text-[11px] text-gray-400">* Required fields</span>
+                    <span className="text-[10px] sm:text-[11px] text-gray-400">* Required</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
                     {/* Name */}
                     <div>
                       <label className="block text-[11px] font-bold text-gray-700 mb-1">
@@ -355,7 +498,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="e.g. Priya Sharma"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -370,7 +513,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="name@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -380,7 +523,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         Mobile Phone Number <span className="text-rose-500">*</span>
                       </label>
                       <div className="flex">
-                        <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-xs font-bold text-gray-600">
+                        <span className="inline-flex items-center px-2.5 sm:px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-xs font-bold text-gray-600 shrink-0">
                           🇮🇳 +91
                         </span>
                         <input
@@ -389,7 +532,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                           placeholder="9876543210"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-r-lg text-xs font-mono text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                          className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-r-lg text-sm sm:text-xs font-mono text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
@@ -405,7 +548,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="e.g. Flat 402, Royal Residency, Linking Road"
                         value={street}
                         onChange={(e) => setStreet(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -420,7 +563,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="e.g. Mumbai"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -435,7 +578,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="e.g. Maharashtra"
                         value={state}
                         onChange={(e) => setState(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -451,7 +594,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         placeholder="e.g. 400050"
                         value={pincode}
                         onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
-                        className="w-full px-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs font-mono font-bold text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 sm:py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-sm sm:text-xs font-mono font-bold text-charcoal focus:bg-white focus:border-[#769055] focus:outline-none transition-colors"
                       />
                     </div>
 
@@ -464,7 +607,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         <button
                           type="button"
                           onClick={() => setAddressType('Home')}
-                          className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                          className={`flex-1 py-2 sm:py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                             addressType === 'Home'
                               ? 'bg-[#769055]/10 border-[#769055] text-[#769055]'
                               : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
@@ -475,7 +618,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                         <button
                           type="button"
                           onClick={() => setAddressType('Work')}
-                          className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                          className={`flex-1 py-2 sm:py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                             addressType === 'Work'
                               ? 'bg-[#769055]/10 border-[#769055] text-[#769055]'
                               : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
@@ -498,9 +641,9 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   </div>
                 </form>
               ) : (
-                /* Payment Options (Myntra Style Cards) */
-                <div className="bg-white p-5 sm:p-6 rounded-xl border border-gray-200 shadow-xs space-y-5">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                /* Payment Options */
+                <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-xs space-y-5">
+                  <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 border-b border-gray-100 pb-3">
                     <div>
                       <h2 className="text-xs font-extrabold uppercase tracking-wider text-charcoal flex items-center gap-2">
                         <span>💳</span> Select Payment Method
@@ -512,7 +655,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     <button
                       type="button"
                       onClick={() => setActiveStep('address')}
-                      className="text-xs text-[#769055] font-bold underline hover:text-[#5e7343] cursor-pointer"
+                      className="text-xs text-[#769055] font-bold underline hover:text-[#5e7343] cursor-pointer self-start xs:self-auto"
                     >
                       Change Address
                     </button>
@@ -522,34 +665,37 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     {/* Option 1: Full Online Payment */}
                     <div
                       onClick={() => setPaymentMethod('Online UPI / Card')}
-                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
+                      className={`p-3.5 sm:p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
                         paymentMethod === 'Online UPI / Card'
                           ? 'border-[#769055] bg-emerald-50/30 shadow-xs'
                           : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
                         <div className="flex items-start gap-3">
                           <input
                             type="radio"
                             name="paymentOption"
                             checked={paymentMethod === 'Online UPI / Card'}
                             onChange={() => setPaymentMethod('Online UPI / Card')}
-                            className="mt-1 text-[#769055] focus:ring-[#769055]"
+                            className="mt-1 text-[#769055] focus:ring-[#769055] shrink-0"
                           />
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                               <span className="font-extrabold text-xs text-[#202223]">
                                 UPI / Cards / NetBanking / Wallets
                               </span>
-                              <span className="text-[10px] bg-emerald-100 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
+                              <span className="text-[9px] sm:text-[10px] bg-emerald-100 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
                                 RECOMMENDED
                               </span>
+                              <RazorpayLogo height={15} variant="full" />
                             </div>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                              Pay ₹{totalAmount.toLocaleString('en-IN')} online via Razorpay. Fast & 100% verified.
-                            </p>
-                            <div className="flex items-center gap-2 mt-2.5 text-[10px] text-gray-600">
+                            <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span>Pay ₹{totalAmount.toLocaleString('en-IN')} online via</span>
+                              <RazorpayLogo height={13} variant="full" />
+                              <span>Fast & 100% verified.</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 text-[10px] text-gray-600">
                               <span className="bg-gray-100 px-2 py-0.5 rounded font-mono font-bold">Google Pay</span>
                               <span className="bg-gray-100 px-2 py-0.5 rounded font-mono font-bold">PhonePe</span>
                               <span className="bg-gray-100 px-2 py-0.5 rounded font-mono font-bold">Paytm</span>
@@ -558,46 +704,48 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                           </div>
                         </div>
 
-                        <span className="text-sm font-extrabold text-emerald-800">
-                          ₹{totalAmount.toLocaleString('en-IN')}
-                        </span>
+                        <div className="sm:text-right shrink-0 pl-7 sm:pl-0">
+                          <span className="text-sm font-extrabold text-emerald-800">
+                            ₹{totalAmount.toLocaleString('en-IN')}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Option 2: Cash on Delivery with Advance Booking Charge */}
                     <div
                       onClick={() => setPaymentMethod('COD')}
-                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
+                      className={`p-3.5 sm:p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
                         paymentMethod === 'COD'
                           ? 'border-amber-600 bg-amber-50/40 shadow-xs'
                           : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
                         <div className="flex items-start gap-3">
                           <input
                             type="radio"
                             name="paymentOption"
                             checked={paymentMethod === 'COD'}
                             onChange={() => setPaymentMethod('COD')}
-                            className="mt-1 text-amber-600 focus:ring-amber-600"
+                            className="mt-1 text-amber-600 focus:ring-amber-600 shrink-0"
                           />
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                               <span className="font-extrabold text-xs text-[#202223]">
                                 Cash on Delivery (COD)
                               </span>
-                              <span className="text-[10px] bg-amber-200 text-amber-950 font-extrabold px-2 py-0.5 rounded-full">
-                                +₹{codExtraFee} ADVANCE FEE
+                              <span className="text-[9px] sm:text-[10px] bg-amber-200 text-amber-950 font-extrabold px-2 py-0.5 rounded-full">
+                                +₹{codExtraFee} ADVANCE CHARGE
                               </span>
                             </div>
                             <p className="text-[11px] text-amber-900 mt-1 leading-relaxed">
-                              Pay <strong className="font-extrabold text-amber-950">₹{codExtraFee} booking fee online now</strong> to confirm dispatch. Pay full garment price <strong className="font-extrabold text-charcoal">₹{totalAmount.toLocaleString('en-IN')} to courier on delivery</strong>.
+                              Cash on Delivery is available across eligible orders. A <strong className="font-extrabold text-amber-950">₹{codExtraFee} COD shipping charge</strong> is applicable in addition to the outfit price and must be paid in advance to confirm the COD order. The remaining outfit amount (<strong className="font-extrabold text-charcoal">₹{totalAmount.toLocaleString('en-IN')}</strong>) can be paid at the time of delivery.
                             </p>
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
+                        <div className="sm:text-right shrink-0 pl-7 sm:pl-0">
                           <span className="text-xs font-bold text-amber-900 block">
                             Pay ₹{codExtraFee} Now
                           </span>
@@ -609,12 +757,12 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     </div>
                   </div>
 
-                  {/* Payment CTA Button */}
-                  <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  {/* Payment CTA Buttons */}
+                  <div className="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
                     <button
                       type="button"
                       onClick={() => setActiveStep('address')}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-charcoal text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-charcoal text-xs font-bold rounded-lg transition-colors cursor-pointer text-center"
                     >
                       ← Back to Address
                     </button>
@@ -628,7 +776,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                       {isSubmitting ? (
                         'Opening Gateway...'
                       ) : paymentMethod === 'COD' ? (
-                        `Pay ₹${codExtraFee} Online & Confirm COD Order →`
+                        `Pay ₹${codExtraFee} & Confirm COD →`
                       ) : (
                         `Pay ₹${totalAmount.toLocaleString('en-IN')} & Complete Order →`
                       )}
@@ -641,11 +789,11 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             {/* Right Column: Order Summary & Trust Badges (5 Cols) */}
             <div className="lg:col-span-5 space-y-4">
               
-              {/* Order Summary Card */}
-              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs space-y-4">
+              {/* Order Summary Card (Always visible on lg screens, also displayed below form on mobile) */}
+              <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200 shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-charcoal flex items-center gap-1.5">
-                    <span>🛍️</span> Bag Summary ({cart.length} items)
+                    <span>🛍️</span> Bag Summary ({cart.length} {cart.length === 1 ? 'item' : 'items'})
                   </h3>
                   <span className="text-[11px] font-bold text-[#769055]">
                     ₹{totalAmount.toLocaleString('en-IN')}
@@ -717,18 +865,21 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
               </div>
 
               {/* Trust & Guarantee Badges */}
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-2.5 text-[11px] text-gray-600">
+              <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-xs space-y-2.5 text-[11px] text-gray-600">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-base">🛡️</span>
+                  <span className="text-base shrink-0">🛡️</span>
                   <span><strong>100% Genuine Designer Apparel</strong> handcrafted in India.</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-base">⚡</span>
+                  <span className="text-base shrink-0">⚡</span>
                   <span><strong>Express Courier Partner:</strong> Blue Dart / Delhivery (3–5 Days).</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-base">🔒</span>
-                  <span><strong>Razorpay Verified:</strong> 256-bit encrypted bank checkout.</span>
+                  <span className="text-base shrink-0">🔒</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <RazorpayLogo height={14} variant="badge" />
+                    <span>256-bit encrypted bank checkout.</span>
+                  </div>
                 </div>
               </div>
             </div>

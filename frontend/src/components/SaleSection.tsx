@@ -101,12 +101,12 @@ function RoyalSaleSectionHeader() {
         <LotusCrest />
 
         {/* Heading with gold rules on both sides */}
-        <div className="mt-2 flex items-center w-full max-w-2xl gap-3 sm:gap-5">
+        <div className="mt-2 flex items-center justify-center w-full max-w-2xl gap-2 sm:gap-4 md:gap-5 px-2">
           <SideRule side="left" />
 
           <h2
             id="sale-heading"
-            className="shrink-0 font-serif text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#3e502a] tracking-wide leading-tight"
+            className="font-serif text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-[#3e502a] tracking-tight sm:tracking-wide leading-tight text-center"
           >
             Mega Sale Collection
           </h2>
@@ -114,7 +114,7 @@ function RoyalSaleSectionHeader() {
           <SideRule side="right" />
         </div>
 
-        <p className="mt-3 sm:mt-4 text-[#6d5b52] font-serif italic text-sm sm:text-base leading-relaxed max-w-md">
+        <p className="mt-2.5 sm:mt-3.5 text-[#6d5b52] font-serif italic text-xs sm:text-sm md:text-base leading-relaxed max-w-md px-2">
           Up to 50% off on selected handcrafted luxury sets — while stock lasts
         </p>
       </div>
@@ -159,7 +159,7 @@ function TraditionalSaleCard({ product }: { product: Product }) {
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
-    toggleWishlist(id)
+    toggleWishlist(product)
   }
 
   const handleCardClick = () => {
@@ -169,10 +169,10 @@ function TraditionalSaleCard({ product }: { product: Product }) {
   return (
     <div
       onClick={handleCardClick}
-      className="group relative flex flex-col bg-[#fffcf7] rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 border border-[#e4cbaf] shadow-[0_8px_26px_rgba(196,147,50,0.22),0_2px_8px_rgba(196,147,50,0.12)] hover:shadow-[0_18px_42px_rgba(196,147,50,0.4),0_6px_16px_rgba(196,147,50,0.22)] hover:border-[#c9973a] transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer"
+      className="group relative flex flex-col bg-[#fffcf7] rounded-xl sm:rounded-3xl p-2 sm:p-3 border border-[#e4cbaf] shadow-[0_4px_16px_rgba(196,147,50,0.18)] hover:shadow-[0_18px_42px_rgba(196,147,50,0.4)] hover:border-[#c9973a] transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer"
     >
       {/* 1. Image Frame Container with Inset Border */}
-      <div className="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-[#faf5ee] border border-[#e8d5c0]/60 shadow-xs">
+      <div className="relative w-full aspect-[3/4] sm:aspect-[2/3] rounded-lg sm:rounded-2xl overflow-hidden bg-[#faf5ee] border border-[#e8d5c0]/60 shadow-xs">
         {/* Full-Length Portrait Image with Smooth Zoom */}
         <img
           src={img}
@@ -182,25 +182,17 @@ function TraditionalSaleCard({ product }: { product: Product }) {
         />
 
         {/* Soft Contrast Gradient at Bottom */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 via-black/10 to-transparent pointer-events-none" />
-
-        {/* Top-Left Mega Sale Tag */}
-        <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#8c2a2a] text-white text-[10px] font-serif uppercase tracking-widest shadow-xs border border-white/20">
-            <span className="w-1 h-1 rounded-full bg-[#ffcc66]" />
-            <span>Mega Sale</span>
-          </span>
-        </div>
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 via-black/10 to-transparent pointer-events-none" />
 
         {/* Top-Right Glass Wishlist Button */}
         <button
           type="button"
           onClick={handleWishlistToggle}
-          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/85 backdrop-blur-xs shadow-xs border border-[#e8d5c0] flex items-center justify-center hover:bg-white hover:scale-110 active:scale-95 transition-all z-10 cursor-pointer"
+          className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/85 backdrop-blur-xs shadow-xs border border-[#e8d5c0] flex items-center justify-center hover:bg-white hover:scale-110 active:scale-95 transition-all z-10 cursor-pointer"
           aria-label={isWished ? 'Remove from wishlist' : 'Add to wishlist'}
         >
           <svg
-            className={`w-4 h-4 transition-colors ${
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
               isWished ? 'text-red-500 fill-red-500' : 'text-charcoal stroke-current fill-none hover:text-red-500'
             }`}
             stroke="currentColor"
@@ -219,39 +211,43 @@ function TraditionalSaleCard({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAddToCart}
-          className={`absolute bottom-0 inset-x-0 py-2.5 text-white text-[11px] sm:text-xs font-serif uppercase tracking-wider font-semibold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer z-10 translate-y-0 opacity-100 sm:translate-y-full sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 ${
+          className={`absolute bottom-0 inset-x-0 py-2 sm:py-2.5 text-white text-[10px] sm:text-xs font-serif uppercase tracking-wider font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer z-10 translate-y-0 opacity-100 sm:translate-y-full sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 ${
             added
               ? 'bg-[#c9973a]'
               : 'bg-gradient-to-r from-[#4d6333] via-[#3e502a] to-[#4d6333] hover:from-[#354523] hover:to-[#354523]'
           }`}
         >
-          <span>{added ? '✓ Added to Bag' : '+ Add to Bag'}</span>
+          <span>{added ? '✓ Added' : '+ Add to Bag'}</span>
         </button>
       </div>
 
       {/* 2. Product Description & Price Block */}
-      <div className="pt-3 pb-1 px-1 flex flex-col gap-1 text-left">
-        <span className="font-serif font-bold text-[#b88628] text-[10px] sm:text-[11px] uppercase tracking-[0.16em] line-clamp-1">
-          {category || 'Festive Couture'}
-        </span>
+      <div className="pt-2 sm:pt-3 pb-1 px-0.5 flex flex-col gap-0.5 sm:gap-1 text-left">
+        {/* Label moved to description */}
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#8c2a2a] text-white text-[8px] sm:text-[9.5px] font-serif uppercase tracking-widest shadow-xs">
+            <span className="w-1 h-1 rounded-full bg-[#ffcc66]" />
+            <span>Mega Sale</span>
+          </span>
+        </div>
 
-        <h3 className="font-serif font-bold text-sm sm:text-[0.95rem] text-[#2c2420] group-hover:text-[#3e502a] transition-colors line-clamp-1 leading-snug tracking-tight">
+        <h3 className="font-serif font-bold text-xs sm:text-[0.95rem] text-[#2c2420] group-hover:text-[#3e502a] transition-colors line-clamp-1 leading-snug tracking-tight">
           {name}
         </h3>
 
-        <div className="flex items-center flex-wrap gap-2 pt-0.5">
-          <span className="font-serif font-bold text-sm sm:text-base text-[#3e502a]">
+        <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+          <span className="font-serif font-bold text-xs sm:text-base text-[#3e502a]">
             ₹{price.toLocaleString('en-IN')}
           </span>
 
           {originalPrice > price && (
-            <span className="text-[10px] sm:text-xs text-stone-400 line-through">
+            <span className="text-[9px] sm:text-xs text-stone-400 line-through">
               ₹{originalPrice.toLocaleString('en-IN')}
             </span>
           )}
 
           {discountOffText && (
-            <span className="text-[9px] sm:text-[10px] font-bold font-serif text-[#b88628] bg-[#fdf7ea] px-1.5 py-0.5 rounded-sm border border-[#e8c06a]/50">
+            <span className="text-[8px] sm:text-[10px] font-bold font-serif text-[#b88628] bg-[#fdf7ea] px-1 sm:px-1.5 py-0.5 rounded-sm border border-[#e8c06a]/50">
               {discountOffText}
             </span>
           )}
@@ -348,7 +344,7 @@ export function SaleSection() {
         ) : (
           <MobileSlider
             itemCount={diverseSaleProducts.length}
-            desktopGridClassName="md:grid-cols-4"
+            desktopGridClassName="lg:grid-cols-4"
             showDesktopArrows={false}
             indicatorType="bar"
             gapClassName="gap-4 sm:gap-6 lg:gap-8"

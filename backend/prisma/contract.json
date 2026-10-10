@@ -371,7 +371,21 @@
                   "kind": "scalar"
                 }
               },
+              "trackingId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "trackingNumber": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "trackingUrl": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -389,6 +403,20 @@
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "whatsappConfirmedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "whatsappShippedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
                   "kind": "scalar"
                 }
               }
@@ -500,14 +528,26 @@
                 "totalAmount": {
                   "column": "totalAmount"
                 },
+                "trackingId": {
+                  "column": "trackingId"
+                },
                 "trackingNumber": {
                   "column": "trackingNumber"
+                },
+                "trackingUrl": {
+                  "column": "trackingUrl"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
                 },
                 "userId": {
                   "column": "userId"
+                },
+                "whatsappConfirmedAt": {
+                  "column": "whatsappConfirmedAt"
+                },
+                "whatsappShippedAt": {
+                  "column": "whatsappShippedAt"
                 }
               },
               "namespaceId": "public",
@@ -922,10 +962,31 @@
                   "kind": "scalar"
                 }
               },
+              "occasion": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "price": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sku": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -1034,8 +1095,17 @@
                 "name": {
                   "column": "name"
                 },
+                "occasion": {
+                  "column": "occasion"
+                },
                 "price": {
                   "column": "price"
+                },
+                "sku": {
+                  "column": "sku"
+                },
+                "status": {
+                  "column": "status"
                 },
                 "work": {
                   "column": "work"
@@ -1536,7 +1606,17 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
+                "trackingId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "trackingNumber": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "trackingUrl": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
@@ -1553,6 +1633,16 @@
                 "userId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
+                  "nullable": true
+                },
+                "whatsappConfirmedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "whatsappShippedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
                   "nullable": true
                 }
               },
@@ -1885,6 +1975,13 @@
               "indexes": [
                 {
                   "columns": [
+                    "stock"
+                  ],
+                  "name": "idx_product_variants_stock",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "productId"
                   ],
                   "name": "product_variants_productId_idx_5858600a",
@@ -1977,10 +2074,29 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "occasion": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "price": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "sku": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "active"
+                  },
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "work": {
                   "codecId": "pg/text@1",
@@ -2000,10 +2116,53 @@
                 },
                 {
                   "columns": [
+                    "category"
+                  ],
+                  "name": "idx_products_category",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "createdAt"
+                  ],
+                  "name": "idx_products_created_at",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "isNewArrival",
+                    "createdAt"
+                  ],
+                  "name": "idx_products_is_new_arrival",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "occasion"
+                  ],
+                  "name": "idx_products_occasion",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "price"
+                  ],
+                  "name": "idx_products_price",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "isSale",
                     "createdAt"
                   ],
                   "name": "idx_products_sale_created",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status"
+                  ],
+                  "name": "idx_products_status",
                   "unique": false
                 }
               ],
@@ -2019,6 +2178,12 @@
                     "handle"
                   ],
                   "name": "products_handle_key"
+                },
+                {
+                  "columns": [
+                    "sku"
+                  ],
+                  "name": "products_sku_key"
                 }
               ]
             },
@@ -2198,7 +2363,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "37663cdcf2e51f123bbb69b7cc6d65d36f8911d350b873a9d68885eff72a087e"
+    "storageHash": "5b56475df01fea34796a5895070c33263888246eb32a213900184cc40161b11f"
   },
   "capabilities": {
     "postgres": {

@@ -34,17 +34,11 @@ clerkWebhookRouter.post(
     let evt: any
 
     try {
-      // console.log('[DEBUG] req.body is Buffer:', Buffer.isBuffer(req.body))          // ADD
-      // console.log('[DEBUG] req.body typeof:', typeof req.body)                        // ADD
-      // console.log('[DEBUG] req.body raw:', req.body)                                  // ADD
-
       const payloadString = Buffer.isBuffer(req.body)
         ? req.body.toString('utf8')
         : typeof req.body === 'string'
           ? req.body
           : JSON.stringify(req.body)
-
-      console.log('[DEBUG] payloadString:', payloadString)                            // ADD
 
       evt = wh.verify(payloadString, {
         'svix-id': svix_id,
@@ -52,7 +46,6 @@ clerkWebhookRouter.post(
         'svix-signature': svix_signature,
       })
       evt = JSON.parse(payloadString)
-      console.log('[DEBUG] evt after verify:', evt)                                   // ADD
     } catch (err) {
       console.error('[Clerk Webhook] Signature verification failed:', err)
       return res.status(400).json({ error: 'Invalid webhook signature' })

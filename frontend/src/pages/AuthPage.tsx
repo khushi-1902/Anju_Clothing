@@ -231,13 +231,9 @@ export function AuthPage({ initialMode = 'sign-in' }: AuthPageProps) {
         </div>
 
         {/* Footer Quick Links */}
-        <div className="mt-6 text-center space-x-4 text-xs">
+        <div className="mt-6 text-center text-xs">
           <Link to="/" className="text-gray-500 hover:text-[#769055] transition-colors">
             ← Return to Store
-          </Link>
-          <span className="text-gray-300">•</span>
-          <Link to="/track-order" className="text-gray-500 hover:text-[#769055] transition-colors">
-            📦 Track Order as Guest
           </Link>
         </div>
 

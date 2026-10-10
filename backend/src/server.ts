@@ -10,8 +10,10 @@ import { razorpayWebhookRouter } from './routes/webhooks/razorpay'
 import { adminRouter } from './routes/admin'
 import { publicSettingsRouter } from './routes/settings'
 import { paymentsRouter } from './routes/payments'
+import { couponsRouter } from './routes/coupons'
 import { initSettingsTable } from './initSettingsTable'
 import { COD_SHIPPING_FEE } from './config/pricing'
+import { notifyNewOrder, notifyCustomerOrderConfirmation } from './lib/orderNotifier'
 
 // Initialize settings table in PostgreSQL on boot
 initSettingsTable().catch((err) => console.error('Settings init error:', err))
@@ -38,6 +40,9 @@ app.use('/api/admin', requireLogin, requireAdmin, adminRouter)
 
 // 5. Razorpay Payments Route Group
 app.use('/api/payments', paymentsRouter)
+
+// 6. Public Coupons Route Group
+app.use('/api/coupons', couponsRouter)
 
 // 4. Authenticated User Profile & Role Check (for Frontend Route Guards)
 app.get('/api/auth/me', requireLogin, async (req, res) => {
@@ -123,7 +128,7 @@ app.get('/api/products/new-arrivals', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -171,7 +176,7 @@ app.get('/api/products/bestsellers', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -207,6 +212,73 @@ app.get('/api/products/bestsellers', async (req, res) => {
 })
 
 /**
+ * GET /api/products/creators-favourite?limit=12
+ * Products flagged isCreatorsFavourite or with videoUrl, falling back to top active items.
+ * Must stay ABOVE /api/products/:handle.
+ */
+app.get('/api/products/creators-favourite', async (req, res) => {
+  const requested = Number.parseInt(String(req.query.limit ?? '12'), 10)
+  const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 48) : 12
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         p.id, p.handle, p.name, p.category, p.fabric, p.price, p."comparePrice",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
+         COALESCE((
+           SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
+           FROM product_images i WHERE i."productId" = p.id
+         ), '[]'::json) AS images,
+         COALESCE((
+           SELECT json_agg(json_build_object(
+             'id', v.id, 'size', v.size, 'color', v.color, 'price', v.price,
+             'compareAtPrice', v."compareAtPrice", 'stock', v.stock, 'imageUrl', v."imageUrl"
+           ) ORDER BY v.id)
+           FROM product_variants v WHERE v."productId" = p.id
+         ), '[]'::json) AS variants
+       FROM products p
+       WHERE (p.status IS NULL OR p.status = 'active')
+         AND (p."isCreatorsFavourite" = true OR (p."videoUrl" IS NOT NULL AND TRIM(p."videoUrl") != ''))
+       ORDER BY CASE p.handle
+         WHEN 'summer-special-farshi-set' THEN 1
+         WHEN 'viral-real-mirror-bustier-set' THEN 2
+         WHEN 'noor-set' THEN 3
+         WHEN 'cosmos-gold-with-embroidery-work-gown' THEN 4
+         WHEN 'viral-sunflower-farshi-set' THEN 5
+         WHEN 'aafreen-luxe-chinon-gown-set' THEN 6
+         WHEN 'viral-evil-eye-farshi-set' THEN 7
+         WHEN 'viral-fendi-silk-anarkali-set' THEN 8
+         WHEN 'viral-fish-cut-fully-stitched-lehenga' THEN 9
+         WHEN 'faux-georgette-sharara-set' THEN 10
+         WHEN 'premium-chinon-silk-thread-sequence-anarkali-set-with-tabby-organza-dupatta' THEN 11
+         WHEN 'tibby-organza-silk-brush-print-set' THEN 12
+         WHEN 'pure-cotton-bandhej-print-short-kurti' THEN 13
+         WHEN 'premium-fendy-silk-3-piece-suit-set-with-mirror-work' THEN 14
+         ELSE 99
+       END ASC, p.id ASC
+       LIMIT $1`,
+      [limit],
+    )
+
+    const finalRows = rows
+
+    const products = finalRows.map(p => ({
+      ...p,
+      discountPercent:
+        p.comparePrice && p.comparePrice > p.price
+          ? Math.round(((p.comparePrice - p.price) / p.comparePrice) * 100)
+          : 0,
+    }))
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    res.json({ products })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not load creators favourite products' })
+  }
+})
+
+/**
  * GET /api/products/sale?limit=8
  * Products flagged isSale, newest first, with images and variants.
  * Must stay ABOVE /api/products/:handle, or "sale" is read as a handle.
@@ -219,7 +291,7 @@ const handleSaleProducts: express.RequestHandler = async (req, res) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -328,6 +400,8 @@ app.get('/api/facets', async (req, res) => {
       facetConditions.push(`((p."comparePrice" IS NOT NULL AND p."comparePrice" > p.price) OR p."isSale" = true)`)
     } else if (collection === 'bestsellers') {
       facetConditions.push(`(p."isBestseller" = true OR EXISTS (SELECT 1 FROM order_items oi WHERE oi."productId" = p.id))`)
+    } else if (collection === 'creators-favourite') {
+      facetConditions.push(`(p."isCreatorsFavourite" = true OR (p."videoUrl" IS NOT NULL AND TRIM(p."videoUrl") != ''))`)
     }
 
     const facetWhere = facetConditions.join(' AND ')
@@ -457,13 +531,14 @@ app.get('/api/products', async (req, res) => {
   try {
     // 1. Input Validation & Clamping
     const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1)
-    const rawLimit = Number.parseInt(String(req.query.limit ?? '12'), 10)
-    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 48) : 12
+    const collection = String(req.query.collection ?? req.query.filter ?? '').trim().toLowerCase()
+    const defaultLimit = collection === 'creators-favourite' ? 100 : 48
+    const rawLimit = req.query.limit !== undefined ? Number.parseInt(String(req.query.limit), 10) : defaultLimit
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 250) : defaultLimit
     const offset = (page - 1) * limit
 
     const search = String(req.query.q ?? req.query.search ?? '').trim()
     const categorySlug = String(req.query.category ?? '').trim().toLowerCase()
-    const collection = String(req.query.collection ?? req.query.filter ?? '').trim().toLowerCase()
 
     const sizes = parseFilterArray(req.query.size, req.query.sizes)
     const colors = parseFilterArray(req.query.color, req.query.colors)
@@ -506,20 +581,50 @@ app.get('/api/products', async (req, res) => {
       conditions.push(`((p."comparePrice" IS NOT NULL AND p."comparePrice" > p.price) OR p."isSale" = true)`)
     } else if (collection === 'bestsellers') {
       conditions.push(`(p."isBestseller" = true OR EXISTS (SELECT 1 FROM order_items oi WHERE oi."productId" = p.id))`)
+    } else if (collection === 'creators-favourite') {
+      conditions.push(`(p."isCreatorsFavourite" = true OR (p."videoUrl" IS NOT NULL AND TRIM(p."videoUrl") != ''))`)
     }
 
-    // Text Search
+    // Text Search (Phrase match + Multi-token matching)
+    let searchPhraseIdx: number | null = null
     if (search) {
       params.push(`%${search}%`)
-      const pIdx = params.length
-      conditions.push(`(
-        p.name ILIKE $${pIdx} OR 
-        p.category ILIKE $${pIdx} OR 
-        p.fabric ILIKE $${pIdx} OR 
-        p.work ILIKE $${pIdx} OR 
-        p.occasion ILIKE $${pIdx} OR 
-        p."descriptionHtml" ILIKE $${pIdx}
-      )`)
+      searchPhraseIdx = params.length
+
+      const tokens = search.split(/\s+/).map(t => t.trim()).filter(Boolean)
+      if (tokens.length > 1) {
+        const tokenClauses = tokens.map(tok => {
+          params.push(`%${tok}%`)
+          const tIdx = params.length
+          return `(
+            p.name ILIKE $${tIdx} OR 
+            p.category ILIKE $${tIdx} OR 
+            p.fabric ILIKE $${tIdx} OR 
+            p.work ILIKE $${tIdx} OR 
+            p.occasion ILIKE $${tIdx} OR 
+            p."descriptionHtml" ILIKE $${tIdx}
+          )`
+        }).join(' AND ')
+
+        conditions.push(`(
+          p.name ILIKE $${searchPhraseIdx} OR 
+          p.category ILIKE $${searchPhraseIdx} OR 
+          p.fabric ILIKE $${searchPhraseIdx} OR 
+          p.work ILIKE $${searchPhraseIdx} OR 
+          p.occasion ILIKE $${searchPhraseIdx} OR 
+          p."descriptionHtml" ILIKE $${searchPhraseIdx} OR
+          (${tokenClauses})
+        )`)
+      } else {
+        conditions.push(`(
+          p.name ILIKE $${searchPhraseIdx} OR 
+          p.category ILIKE $${searchPhraseIdx} OR 
+          p.fabric ILIKE $${searchPhraseIdx} OR 
+          p.work ILIKE $${searchPhraseIdx} OR 
+          p.occasion ILIKE $${searchPhraseIdx} OR 
+          p."descriptionHtml" ILIKE $${searchPhraseIdx}
+        )`)
+      }
     }
 
     // Price Filters
@@ -655,6 +760,26 @@ app.get('/api/products', async (req, res) => {
     } else if (sort === 'featured') {
       if (collection === 'mega-sale') {
         orderBy = '((COALESCE(p."comparePrice", p.price) - p.price)::float / NULLIF(COALESCE(p."comparePrice", p.price), 0)) DESC, p."createdAt" DESC'
+      } else if (collection === 'creators-favourite') {
+        orderBy = `CASE p.handle
+          WHEN 'summer-special-farshi-set' THEN 1
+          WHEN 'viral-real-mirror-bustier-set' THEN 2
+          WHEN 'noor-set' THEN 3
+          WHEN 'cosmos-gold-with-embroidery-work-gown' THEN 4
+          WHEN 'viral-sunflower-farshi-set' THEN 5
+          WHEN 'aafreen-luxe-chinon-gown-set' THEN 6
+          WHEN 'viral-evil-eye-farshi-set' THEN 7
+          WHEN 'viral-fendi-silk-anarkali-set' THEN 8
+          WHEN 'viral-fish-cut-fully-stitched-lehenga' THEN 9
+          WHEN 'faux-georgette-sharara-set' THEN 10
+          WHEN 'premium-chinon-silk-thread-sequence-anarkali-set-with-tabby-organza-dupatta' THEN 11
+          WHEN 'tibby-organza-silk-brush-print-set' THEN 12
+          WHEN 'pure-cotton-bandhej-print-short-kurti' THEN 13
+          WHEN 'premium-fendy-silk-3-piece-suit-set-with-mirror-work' THEN 14
+          ELSE 99
+        END ASC, p.id ASC`
+      } else if (search && searchPhraseIdx) {
+        orderBy = `(CASE WHEN p.name ILIKE $${searchPhraseIdx} THEN 1 ELSE 2 END) ASC, p."isBestseller" DESC, p."createdAt" DESC`
       } else {
         orderBy = 'p."isBestseller" DESC, p."isNewArrival" DESC, p."createdAt" DESC'
       }
@@ -671,7 +796,7 @@ app.get('/api/products', async (req, res) => {
     const itemsQuery = `
       SELECT
         p.id, p.handle, p.name, p.category, p.fabric, p.occasion, p.price, p."comparePrice",
-        p."isNewArrival", p."isBestseller", p."isSale", p.status, p."createdAt",
+        p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p.status, p."createdAt",
         COUNT(*) OVER() AS total_count,
         COALESCE((
           SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
@@ -716,6 +841,8 @@ app.get('/api/products', async (req, res) => {
       facetConditions.push(`((p."comparePrice" IS NOT NULL AND p."comparePrice" > p.price) OR p."isSale" = true)`)
     } else if (collection === 'bestsellers') {
       facetConditions.push(`(p."isBestseller" = true OR EXISTS (SELECT 1 FROM order_items oi WHERE oi."productId" = p.id))`)
+    } else if (collection === 'creators-favourite') {
+      facetConditions.push(`(p."isCreatorsFavourite" = true OR (p."videoUrl" IS NOT NULL AND TRIM(p."videoUrl") != ''))`)
     }
 
     const facetWhere = facetConditions.join(' AND ')
@@ -859,7 +986,7 @@ app.get('/api/products', async (req, res) => {
       const simQuery = `
         SELECT
           p.id, p.handle, p.name, p.category, p.fabric, p.occasion, p.price, p."comparePrice",
-          p."isNewArrival", p."isBestseller", p."isSale", p.status, p."createdAt",
+          p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p.status, p."createdAt",
           (${scoreSql}) AS match_score,
           COALESCE((
             SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
@@ -927,7 +1054,7 @@ app.get('/api/products/:handle', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p."descriptionHtml", p.category, p.fabric, p.work,
-         p.price, p."comparePrice", p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p.price, p."comparePrice", p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('url', i.url, 'alt', i.alt) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -1088,6 +1215,22 @@ async function initDb() {
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS "razorpayOrderId" TEXT UNIQUE;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS "razorpayPaymentId" TEXT;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS "userId" INT REFERENCES users(id);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS "couponCode" TEXT;
+
+      CREATE TABLE IF NOT EXISTS coupons (
+        id SERIAL PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        description TEXT NOT NULL,
+        discount_type TEXT NOT NULL DEFAULT 'PERCENTAGE',
+        discount_value INT NOT NULL,
+        min_order_amount INT NOT NULL DEFAULT 0,
+        max_discount_amount INT,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        expires_at TIMESTAMPTZ,
+        usage_count INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons (code);
 
       CREATE TABLE IF NOT EXISTS order_items (
         id SERIAL PRIMARY KEY,
@@ -1104,6 +1247,21 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items ("orderId");
       CREATE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON orders ("razorpayOrderId");
     `)
+
+    // Seed default coupons if none exist
+    const couponsCountRes = await pool.query('SELECT COUNT(*) FROM coupons')
+    if (Number.parseInt(couponsCountRes.rows[0].count, 10) === 0) {
+      await pool.query(`
+        INSERT INTO coupons (code, description, discount_type, discount_value, min_order_amount, max_discount_amount)
+        VALUES
+          ('WELCOME10', '10% OFF on your luxury designer outfit (up to ₹500)', 'PERCENTAGE', 10, 999, 500),
+          ('ANJU15', '15% Festive discount on ethnic collections (up to ₹1,000)', 'PERCENTAGE', 15, 1999, 1000),
+          ('FLAT500', 'Flat ₹500 instant discount on orders above ₹2,999', 'FLAT', 500, 2999, NULL),
+          ('FIRST300', 'Flat ₹300 OFF on your first designer order (above ₹1,499)', 'FLAT', 300, 1499, NULL),
+          ('FESTIVE20', '20% OFF on grand wedding and bridal edit (up to ₹1,500)', 'PERCENTAGE', 20, 3999, 1500)
+        ON CONFLICT (code) DO NOTHING;
+      `)
+    }
 
     // Seed sample orders if none exist
     const countRes = await pool.query('SELECT COUNT(*) FROM orders')
@@ -1251,13 +1409,27 @@ async function seedSampleOrders() {
 }
 
 /**
- * Helper to generate unique order reference codes.
- * e.g. AC-M1A2B3-7849
+ * Helper to generate simple sequential order reference numbers (e.g. '01', '02', '03'...).
+ * Stored as two-digit (or higher) strings so they display as #01, #02 in UI and emails.
  */
-function generateOrderNumber(): string {
-  const timestampPart = Date.now().toString(36).toUpperCase()
-  const randomPart = Math.floor(1000 + Math.random() * 9000)
-  return `AC-${timestampPart}-${randomPart}`
+async function generateSimpleOrderNumber(client: any): Promise<string> {
+  const res = await client.query(`
+    SELECT "orderNumber"
+    FROM orders
+    WHERE "orderNumber" ~ '^#?[0-9]+$'
+    ORDER BY CAST(REPLACE("orderNumber", '#', '') AS INTEGER) DESC
+    LIMIT 1
+  `)
+
+  let nextSeq = 1
+  if (res.rows.length > 0 && res.rows[0].orderNumber) {
+    const highest = parseInt(String(res.rows[0].orderNumber).replace(/^#+/, ''), 10)
+    if (!isNaN(highest) && highest > 0) {
+      nextSeq = highest + 1
+    }
+  }
+
+  return String(nextSeq).padStart(2, '0')
 }
 
 /**
@@ -1286,6 +1458,7 @@ app.post('/api/orders', requireLogin, async (req, res) => {
     customerPhone,
     shippingAddress,
     notes,
+    couponCode,
   } = req.body
 
   // 1. Validate customer information
@@ -1470,17 +1643,72 @@ app.post('/api/orders', requireLogin, async (req, res) => {
       })
     }
 
-    // 6. Server-side Financial Calculations based on Business Rules:
-    // PREPAID: shippingFee = 0, totalAmount = subtotal, amountPayableNow = subtotal, amountDueOnDelivery = 0.
-    // COD: shippingFee = 200, totalAmount = subtotal + 200, amountPayableNow = 200, amountDueOnDelivery = subtotal.
+    // 6. Server-side Coupon & Financial Calculations based on Business Rules:
+    let appliedCouponCode: string | null = null
+    let discountAmount = 0
+
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      const cleanCode = couponCode.trim().toUpperCase()
+      const couponRes = await client.query(
+        `SELECT 
+           code, description, discount_type AS "discountType", 
+           discount_value AS "discountValue", min_order_amount AS "minOrderAmount", 
+           max_discount_amount AS "maxDiscountAmount", is_active AS "isActive", expires_at AS "expiresAt"
+         FROM coupons 
+         WHERE UPPER(code) = $1 
+         LIMIT 1`,
+        [cleanCode]
+      )
+
+      if (couponRes.rows.length === 0) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: `Coupon "${cleanCode}" is invalid.` })
+      }
+
+      const coupon = couponRes.rows[0]
+      if (!coupon.isActive) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: `Coupon "${cleanCode}" is no longer active.` })
+      }
+
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: `Coupon "${cleanCode}" has expired.` })
+      }
+
+      const minSpend = Number(coupon.minOrderAmount) || 0
+      if (subtotal < minSpend) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({
+          error: `Coupon "${cleanCode}" requires a minimum order of ₹${minSpend}. Your current subtotal is ₹${subtotal}.`,
+        })
+      }
+
+      if (coupon.discountType === 'PERCENTAGE') {
+        const percentDiscount = Math.round((subtotal * Number(coupon.discountValue)) / 100)
+        const maxDiscount = coupon.maxDiscountAmount ? Number(coupon.maxDiscountAmount) : Infinity
+        discountAmount = Math.min(percentDiscount, maxDiscount)
+      } else {
+        discountAmount = Math.min(Number(coupon.discountValue), subtotal)
+      }
+
+      appliedCouponCode = coupon.code
+
+      // Increment coupon usage count
+      await client.query(
+        `UPDATE coupons SET usage_count = usage_count + 1 WHERE UPPER(code) = $1`,
+        [cleanCode]
+      )
+    }
+
+    // PREPAID: shippingFee = 0, totalAmount = discountedSubtotal, amountPayableNow = totalAmount, amountDueOnDelivery = 0.
+    // COD: shippingFee = 200, totalAmount = discountedSubtotal + 200, amountPayableNow = 200, amountDueOnDelivery = discountedSubtotal.
     const isPrepaid = normalizedPaymentMethod === 'PREPAID'
     const shippingFee = isPrepaid ? 0 : COD_SHIPPING_FEE
-    const discountAmount = 0
-    const totalAmount = subtotal + shippingFee
-    const amountPayableNow = isPrepaid ? subtotal : COD_SHIPPING_FEE
-    const amountDueOnDelivery = isPrepaid ? 0 : subtotal
-
-    const trackingNumber = `BLUEDART-${Math.floor(10000000 + Math.random() * 90000000)}`
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount)
+    const totalAmount = discountedSubtotal + shippingFee
+    const amountPayableNow = isPrepaid ? totalAmount : COD_SHIPPING_FEE
+    const amountDueOnDelivery = isPrepaid ? 0 : discountedSubtotal
 
     const dateNow = new Date()
     const formattedDate = dateNow.toLocaleDateString('en-IN', {
@@ -1498,14 +1726,15 @@ app.post('/api/orders', requireLogin, async (req, res) => {
       { status: 'Delivered', time: 'Upcoming', completed: false, description: 'Package safely delivered.' },
     ]
 
-    // 7. Insert Order Row with retry on orderNumber collision
+    // 7. Insert Order Row with retry on orderNumber collision (simple format #01, #02...)
     let createdOrder: any = null
     let attempts = 0
-    const maxAttempts = 3
+    const maxAttempts = 5
+    let candidateOrderNumber = await generateSimpleOrderNumber(client)
 
     while (attempts < maxAttempts && !createdOrder) {
       attempts++
-      const orderNumber = generateOrderNumber()
+      const orderNumber = candidateOrderNumber
 
       try {
         const orderInsertRes = await client.query(
@@ -1513,8 +1742,8 @@ app.post('/api/orders', requireLogin, async (req, res) => {
             "orderNumber", "clerkUserId", "userId", "customerName", "customerEmail", "customerPhone",
             "shippingAddress", items, subtotal, "shippingFee", "discountAmount", "totalAmount",
             "amountPayableNow", "amountDueOnDelivery", "paymentMethod", "paymentStatus", "orderStatus",
-            "courierName", "trackingNumber", "estimatedDelivery", timeline, notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+            "courierName", "trackingNumber", "estimatedDelivery", timeline, notes, "couponCode"
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
           RETURNING *`,
           [
             orderNumber,
@@ -1534,17 +1763,20 @@ app.post('/api/orders', requireLogin, async (req, res) => {
             normalizedPaymentMethod,
             'PENDING',
             'PENDING',
-            'Blue Dart Express',
-            trackingNumber,
+            null, // courierName - assigned when actually shipped by admin
+            null, // trackingNumber - assigned when actually shipped by admin
             '3–5 Business Days',
             JSON.stringify(timeline),
             notes && typeof notes === 'string' ? notes.trim().slice(0, 500) : null,
+            appliedCouponCode,
           ]
         )
         createdOrder = orderInsertRes.rows[0]
       } catch (insertErr: any) {
         if (insertErr.code === '23505' && attempts < maxAttempts) {
-          console.warn(`[POST /api/orders] orderNumber collision on attempt ${attempts}, retrying...`)
+          console.warn(`[POST /api/orders] orderNumber collision on attempt ${attempts} (${orderNumber}), retrying with next number...`)
+          const currentNum = parseInt(orderNumber, 10) || attempts
+          candidateOrderNumber = String(currentNum + 1).padStart(2, '0')
           continue
         }
         throw insertErr
@@ -1577,6 +1809,16 @@ app.post('/api/orders', requireLogin, async (req, res) => {
 
     await client.query('COMMIT')
 
+    // Fire-and-forget: Notify admin and customer for COD orders right after order is saved
+    if (normalizedPaymentMethod === 'COD') {
+      notifyNewOrder(createdOrder).catch(err => {
+        console.error('[POST /api/orders] Failed to send COD new order notification:', err)
+      })
+      notifyCustomerOrderConfirmation(createdOrder).catch(err => {
+        console.error('[POST /api/orders] Failed to send COD customer confirmation:', err)
+      })
+    }
+
     return res.status(201).json({
       order: createdOrder,
     })
@@ -1591,23 +1833,56 @@ app.post('/api/orders', requireLogin, async (req, res) => {
 
 /**
  * GET /api/orders/user/:userIdOrEmail
- * Get list of orders for a signed-in user by Clerk User ID or Email
+ * Get list of orders for a signed-in user by Clerk User ID or Email (real-time).
  */
 app.get('/api/orders/user/:userIdOrEmail', async (req, res) => {
   const { userIdOrEmail } = req.params
-  if (!userIdOrEmail) {
-    return res.status(400).json({ error: 'User identifier required' })
-  }
+  const auth = getAuth(req)
+  const clerkUserId = auth?.userId
+  const queryEmail = (req.query.email as string | undefined)?.toLowerCase().trim()
+  const queryPhone = (req.query.phone as string | undefined)?.replace(/\D/g, '')
 
   try {
+    const conditions: string[] = []
+    const params: any[] = []
+
+    if (clerkUserId) {
+      params.push(clerkUserId)
+      conditions.push(`"clerkUserId" = $${params.length}`)
+    }
+
+    if (userIdOrEmail && userIdOrEmail !== 'my-orders') {
+      const cleanIdent = userIdOrEmail.trim()
+      params.push(cleanIdent)
+      params.push(cleanIdent.toLowerCase())
+      conditions.push(`"clerkUserId" = $${params.length - 1} OR LOWER("customerEmail") = $${params.length}`)
+    }
+
+    if (queryEmail) {
+      params.push(queryEmail)
+      conditions.push(`LOWER("customerEmail") = $${params.length}`)
+    }
+
+    if (queryPhone && queryPhone.length >= 10) {
+      params.push(`%${queryPhone.slice(-10)}%`)
+      conditions.push(`REGEXP_REPLACE(COALESCE("customerPhone", ''), '\\D', '', 'g') LIKE $${params.length}`)
+    }
+
+    if (conditions.length === 0) {
+      return res.json({ orders: [] })
+    }
+
     const { rows } = await pool.query(
       `SELECT * FROM orders
-       WHERE "clerkUserId" = $1 OR "customerEmail" ILIKE $1
+       WHERE ${conditions.join(' OR ')}
        ORDER BY "createdAt" DESC`,
-      [userIdOrEmail.trim()]
+      params
     )
 
-    res.json({ orders: rows })
+    // Deduplicate orders if matched across multiple conditions
+    const uniqueOrders = Array.from(new Map(rows.map((r) => [r.orderNumber, r])).values())
+
+    res.json({ orders: uniqueOrders })
   } catch (err) {
     console.error('Error fetching user orders:', err)
     res.status(500).json({ error: 'Could not fetch orders' })
@@ -1627,9 +1902,16 @@ app.get('/api/orders/track/:orderNumber', async (req, res) => {
   }
 
   try {
+    const rawNum = String(orderNumber).trim()
+    const cleanNum = rawNum.replace(/^#+/, '')
+
     const { rows } = await pool.query(
-      `SELECT * FROM orders WHERE UPPER("orderNumber") = UPPER($1) LIMIT 1`,
-      [orderNumber.trim()]
+      `SELECT * FROM orders 
+       WHERE UPPER("orderNumber") = UPPER($1) 
+          OR UPPER("orderNumber") = UPPER($2) 
+          OR UPPER(REPLACE("orderNumber", '#', '')) = UPPER($2) 
+       LIMIT 1`,
+      [rawNum, cleanNum]
     )
 
     if (rows.length === 0) {
@@ -1661,11 +1943,16 @@ app.get('/api/orders/track/:orderNumber', async (req, res) => {
 app.post('/api/orders/:orderNumber/cancel', async (req, res) => {
   const { orderNumber } = req.params
   const { reason = 'Customer requested cancellation' } = req.body
+  const rawNum = String(orderNumber ?? '').trim()
+  const cleanNum = rawNum.replace(/^#+/, '')
 
   try {
     const checkRes = await pool.query(
-      'SELECT * FROM orders WHERE UPPER("orderNumber") = UPPER($1)',
-      [orderNumber.trim()]
+      `SELECT * FROM orders 
+       WHERE UPPER("orderNumber") = UPPER($1) 
+          OR UPPER("orderNumber") = UPPER($2) 
+          OR UPPER(REPLACE("orderNumber", '#', '')) = UPPER($2)`,
+      [rawNum, cleanNum]
     )
 
     if (checkRes.rows.length === 0) {
@@ -1692,15 +1979,134 @@ app.post('/api/orders/:orderNumber/cancel', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE orders
        SET "orderStatus" = 'Cancelled', timeline = $1, notes = $2, "updatedAt" = now()
-       WHERE UPPER("orderNumber") = UPPER($3)
+       WHERE id = $3
        RETURNING *`,
-      [JSON.stringify(updatedTimeline), `Cancelled: ${reason}`, orderNumber.trim()]
+      [JSON.stringify(updatedTimeline), `Cancelled: ${reason}`, order.id]
     )
 
     res.json({ order: rows[0], message: 'Order has been cancelled successfully.' })
   } catch (err) {
     console.error('Error cancelling order:', err)
     res.status(500).json({ error: 'Could not cancel order' })
+  }
+})
+
+/**
+ * PATCH /api/orders/:orderNumber/whatsapp-confirmed
+ */
+app.patch('/api/orders/:orderNumber/whatsapp-confirmed', requireLogin, requireAdmin, async (req, res) => {
+  const orderNumber = String(req.params.orderNumber ?? '').trim()
+  try {
+    const { rows } = await pool.query(
+      `UPDATE orders
+       SET 
+         "whatsappConfirmedAt" = NOW(),
+         "updatedAt" = NOW()
+       WHERE UPPER("orderNumber") = UPPER($1)
+       RETURNING *`,
+      [orderNumber]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    res.json({
+      success: true,
+      order: rows[0],
+      message: `WhatsApp confirmation timestamp recorded for #${orderNumber}`,
+    })
+  } catch (err: any) {
+    console.error('Error recording WhatsApp confirmation:', err)
+    res.status(500).json({ error: err.message || 'Failed to record WhatsApp confirmation' })
+  }
+})
+
+/**
+ * PATCH /api/orders/:orderNumber/whatsapp-shipped
+ */
+app.patch('/api/orders/:orderNumber/whatsapp-shipped', requireLogin, requireAdmin, async (req, res) => {
+  const orderNumber = String(req.params.orderNumber ?? '').trim()
+  const { courierName, trackingId, trackingUrl } = req.body
+
+  if (!courierName || typeof courierName !== 'string' || !courierName.trim()) {
+    return res.status(400).json({ error: 'Courier name is required.' })
+  }
+
+  if (!trackingId || typeof trackingId !== 'string' || !trackingId.trim()) {
+    return res.status(400).json({ error: 'Tracking ID is required.' })
+  }
+
+  if (!trackingUrl || typeof trackingUrl !== 'string' || !trackingUrl.trim() || !/^https?:\/\//i.test(trackingUrl.trim())) {
+    return res.status(400).json({ error: 'Tracking URL is required and must start with http:// or https://' })
+  }
+
+  try {
+    const currentRes = await pool.query(
+      `SELECT timeline, "orderStatus" FROM orders WHERE UPPER("orderNumber") = UPPER($1) LIMIT 1`,
+      [orderNumber]
+    )
+
+    if (currentRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    let timeline = currentRes.rows[0].timeline || []
+    if (typeof timeline === 'string') {
+      try { timeline = JSON.parse(timeline) } catch (_) { timeline = [] }
+    }
+
+    const trimmedCourier = courierName.trim()
+    const trimmedTrackingId = trackingId.trim()
+    const trimmedTrackingUrl = trackingUrl.trim()
+
+    let newOrderStatus = currentRes.rows[0].orderStatus
+    if (newOrderStatus !== 'Delivered' && newOrderStatus !== 'Shipped') {
+      newOrderStatus = 'Shipped'
+      const nowFormatted = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+      timeline.push({
+        status: 'Shipped',
+        time: nowFormatted,
+        completed: true,
+        description: `Dispatched via ${trimmedCourier} (Tracking ID: ${trimmedTrackingId}). WhatsApp shipping update sent.`,
+      })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE orders
+       SET 
+         "courierName" = $1,
+         "trackingId" = $2,
+         "trackingNumber" = COALESCE("trackingNumber", $2),
+         "trackingUrl" = $3,
+         "whatsappShippedAt" = NOW(),
+         "orderStatus" = $4,
+         timeline = $5::jsonb,
+         "updatedAt" = NOW()
+       WHERE UPPER("orderNumber") = UPPER($6)
+       RETURNING *`,
+      [
+        trimmedCourier,
+        trimmedTrackingId,
+        trimmedTrackingUrl,
+        newOrderStatus,
+        JSON.stringify(timeline),
+        orderNumber,
+      ]
+    )
+
+    res.json({
+      success: true,
+      order: rows[0],
+      message: `Shipping information and WhatsApp update saved for #${orderNumber}`,
+    })
+  } catch (err: any) {
+    console.error('Error updating WhatsApp shipped status:', err)
+    res.status(500).json({ error: err.message || 'Failed to update WhatsApp shipped status' })
   }
 })
 

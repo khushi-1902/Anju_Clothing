@@ -27,6 +27,8 @@ interface ApiProduct {
   isNewArrival?: boolean
   isBestseller?: boolean
   isSale?: boolean
+  videoUrl?: string | null
+  isCreatorsFavourite?: boolean
 }
 
 const unique = (arr: (string | null)[]) =>
@@ -36,6 +38,7 @@ export function mapApiProduct(p: ApiProduct): Product {
   const isBestseller = Boolean(p.isBestseller)
   const isNewArrival = Boolean(p.isNewArrival)
   const isSale = Boolean(p.isSale)
+  const isCreatorsFavourite = Boolean(p.isCreatorsFavourite)
 
   return {
     id: p.handle,
@@ -45,7 +48,7 @@ export function mapApiProduct(p: ApiProduct): Product {
     category: p.category ?? '',
     categorySlug: p.category ? p.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : '',
     img: p.images[0]?.url ?? '',
-    tag: isBestseller ? 'BESTSELLER' : isNewArrival ? 'NEW' : isSale ? 'SALE' : '',
+    tag: isBestseller ? 'BESTSELLER' : isNewArrival ? 'NEW' : isSale ? 'SALE' : isCreatorsFavourite ? 'CREATOR PICK' : '',
     discount: p.discountPercent > 0 ? `-${p.discountPercent}%` : '',
     rating: 0,
     reviewCount: 0,
@@ -59,6 +62,8 @@ export function mapApiProduct(p: ApiProduct): Product {
     isNewArrival,
     isBestseller,
     isSale,
+    videoUrl: p.videoUrl || undefined,
+    isCreatorsFavourite,
   }
 }
 
@@ -241,6 +246,34 @@ export function useSaleProducts(limit = 8) {
 export const useMegaSale = useSaleProducts
 export const useSale = useSaleProducts
 
+export async function fetchCreatorsFavourites(limit = 12): Promise<Product[]> {
+  const res = await fetch(`${API_URL}/api/products/creators-favourite?limit=${limit}`)
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  const data: { products: ApiProduct[] } = await res.json()
+  return data.products.map(mapApiProduct)
+}
+
+export function useCreatorsFavourites(limit = 12) {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchCreatorsFavourites(limit)
+      .then((p) => !cancelled && setProducts(p))
+      .catch((err) => {
+        console.error('Error loading creators favourite products:', err)
+        if (!cancelled) setProducts([])
+      })
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [limit])
+
+  return { products, loading }
+}
+
 export interface ProductsResponse {
   items: Product[]
   products: Product[]
@@ -400,6 +433,8 @@ function mapApiProductDetail(p: ApiProductDetail): Product {
     isNewArrival: p.isNewArrival,
     isBestseller: p.isBestseller,
     isSale: p.isSale,
+    videoUrl: p.videoUrl || undefined,
+    isCreatorsFavourite: Boolean(p.isCreatorsFavourite),
   }
 }
 
@@ -489,13 +524,18 @@ export interface OrderTimelineEvent {
 }
 
 export interface OrderItem {
-  id: string
+  id?: string | number
+  productId?: number
+  productVariantId?: number
   name: string
   price: number
   quantity: number
   selectedSize?: string
   selectedColor?: string
+  size?: string
+  color?: string
   img?: string
+  imageUrl?: string
 }
 
 export interface ShippingAddress {
@@ -504,6 +544,7 @@ export interface ShippingAddress {
   state: string
   pincode: string
   country?: string
+  addressType?: string
 }
 
 export interface Order {
@@ -526,6 +567,10 @@ export interface Order {
   orderStatus: string
   courierName?: string
   trackingNumber?: string
+  trackingId?: string
+  trackingUrl?: string
+  whatsappConfirmedAt?: string
+  whatsappShippedAt?: string
   estimatedDelivery?: string
   timeline: OrderTimelineEvent[]
   notes?: string
@@ -537,13 +582,26 @@ export interface CreateOrderPayload {
   items: Array<{
     productVariantId: number
     quantity: number
+    productId?: number
+    name?: string
+    price?: number
+    size?: string
+    color?: string
+    imageUrl?: string
   }>
   paymentMethod: 'PREPAID' | 'COD'
   customerName: string
   customerEmail: string
   customerPhone: string
   shippingAddress: ShippingAddress
+  subtotal?: number
+  shippingFee?: number
+  discountAmount?: number
+  totalAmount?: number
+  amountPayableNow?: number
+  amountDueOnDelivery?: number
   notes?: string
+  couponCode?: string
 }
 
 export async function createOrder(
@@ -568,7 +626,7 @@ export async function createOrder(
 }
 
 export async function createPaymentOrder(
-  orderNumber: string,
+  param: string | { orderId?: number; orderNumber: string },
   token?: string | null
 ): Promise<{
   razorpayOrderId: string
@@ -586,10 +644,12 @@ export async function createPaymentOrder(
     headers['Authorization'] = `Bearer ${token}`
   }
 
+  const payload = typeof param === 'string' ? { orderNumber: param } : param
+
   const res = await fetch(`${API_URL}/api/payments/create-order`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ orderNumber }),
+    body: JSON.stringify(payload),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -633,13 +693,19 @@ export async function verifyPayment(
   return data
 }
 
-export async function fetchUserOrders(userIdOrEmail: string, token?: string | null): Promise<Order[]> {
+export async function fetchUserOrders(
+  userIdOrEmail?: string,
+  token?: string | null,
+  email?: string | null
+): Promise<Order[]> {
   try {
     const headers: Record<string, string> = {}
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    const res = await fetch(`${API_URL}/api/orders/user/my-orders`, { headers })
+    const cleanId = userIdOrEmail ? encodeURIComponent(userIdOrEmail.trim()) : 'my-orders'
+    const query = email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ''
+    const res = await fetch(`${API_URL}/api/orders/user/${cleanId}${query}`, { headers })
     if (!res.ok) return []
     const data: { orders: Order[] } = await res.json()
     return data.orders || []
@@ -648,12 +714,16 @@ export async function fetchUserOrders(userIdOrEmail: string, token?: string | nu
   }
 }
 
-export async function trackOrder(orderNumber: string, _verify?: string): Promise<Order> {
-  const url = `${API_URL}/api/orders/${encodeURIComponent(orderNumber)}`
-  const res = await fetch(url)
+export async function trackOrder(orderNumber: string, verify?: string): Promise<Order> {
+  const cleanNum = orderNumber.replace(/^#+/, '').trim()
+  const verifyParam = verify ? `?verify=${encodeURIComponent(verify.trim())}` : ''
+  let res = await fetch(`${API_URL}/api/orders/track/${encodeURIComponent(cleanNum)}${verifyParam}`)
+  if (!res.ok) {
+    res = await fetch(`${API_URL}/api/orders/${encodeURIComponent(cleanNum)}`)
+  }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || 'Order not found')
+    throw new Error(data.error || 'Order not found. Please verify your order number.')
   }
   const data: { order: Order } = await res.json()
   return data.order
@@ -671,4 +741,57 @@ export async function cancelOrder(orderNumber: string, reason?: string): Promise
   }
   const data: { order: Order } = await res.json()
   return data.order
+}
+
+export interface Coupon {
+  id: number
+  code: string
+  description: string
+  discountType: 'PERCENTAGE' | 'FLAT'
+  discountValue: number
+  minOrderAmount: number
+  maxDiscountAmount: number | null
+  expiresAt: string | null
+}
+
+export interface CouponValidationResult {
+  valid: boolean
+  coupon?: {
+    code: string
+    description: string
+    discountType: 'PERCENTAGE' | 'FLAT'
+    discountValue: number
+    minOrderAmount: number
+    maxDiscountAmount: number | null
+  }
+  discountAmount?: number
+  newSubtotal?: number
+  message?: string
+  error?: string
+}
+
+export async function fetchCoupons(): Promise<Coupon[]> {
+  const res = await fetch(`${API_URL}/api/coupons`)
+  if (!res.ok) throw new Error('Failed to fetch coupons.')
+  const data = await res.json()
+  return data.coupons || []
+}
+
+export async function validateCoupon(
+  code: string,
+  subtotal: number
+): Promise<CouponValidationResult> {
+  const res = await fetch(`${API_URL}/api/coupons/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, subtotal }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.valid) {
+    return {
+      valid: false,
+      error: data.error || 'Invalid or expired coupon code.',
+    }
+  }
+  return data
 }

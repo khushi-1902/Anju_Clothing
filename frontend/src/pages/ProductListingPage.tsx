@@ -13,7 +13,7 @@ import {
   type FilterFacets,
 } from '../utils/productFilters'
 
-export type ListingMode = 'all-products' | 'category' | 'new-arrivals' | 'mega-sale' | 'bestsellers'
+export type ListingMode = 'all-products' | 'category' | 'new-arrivals' | 'mega-sale' | 'bestsellers' | 'creators-favourite'
 
 interface ProductListingPageProps {
   mode?: ListingMode
@@ -55,13 +55,15 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
   const isNewArrivalsMode = mode === 'new-arrivals'
   const isMegaSaleMode = mode === 'mega-sale'
   const isBestsellersMode = mode === 'bestsellers'
+  const isCreatorsFavouriteMode = mode === 'creators-favourite'
 
   const collectionFilter = useMemo(() => {
     if (isNewArrivalsMode) return 'new-arrivals'
     if (isMegaSaleMode) return 'mega-sale'
     if (isBestsellersMode) return 'bestsellers'
+    if (isCreatorsFavouriteMode) return 'creators-favourite'
     return searchParams.get('collection') || ''
-  }, [isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, searchParams])
+  }, [isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, isCreatorsFavouriteMode, searchParams])
 
   const categoryFilter = useMemo(() => {
     if (isCategoryMode && categorySlug) return categorySlug
@@ -76,7 +78,7 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
     const occasionParam = searchParams.get('occasion') || searchParams.get('occasions') || ''
     const minPriceParam = searchParams.get('minPrice')
     const maxPriceParam = searchParams.get('maxPrice')
-    const inStockParam = searchParams.get('inStock')
+    const inStockParam = searchParams.get('inStock') || searchParams.get('stock')
 
     let priceRange: [number, number] | null = null
     if (minPriceParam && maxPriceParam) {
@@ -88,12 +90,12 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
       collection: collectionFilter,
       title: searchParams.get('q') || searchParams.get('search') || '',
       price: priceRange,
-      sizes: sizeParam ? sizeParam.split(',').filter(Boolean) : [],
-      colors: colorParam ? colorParam.split(',').filter(Boolean) : [],
-      fabrics: fabricParam ? fabricParam.split(',').filter(Boolean) : [],
-      occasions: occasionParam ? occasionParam.split(',').filter(Boolean) : [],
+      sizes: sizeParam ? sizeParam.split(',').map(s => s.trim()).filter(Boolean) : [],
+      colors: colorParam ? colorParam.split(',').map(s => s.trim()).filter(Boolean) : [],
+      fabrics: fabricParam ? fabricParam.split(',').map(s => s.trim()).filter(Boolean) : [],
+      occasions: occasionParam ? occasionParam.split(',').map(s => s.trim()).filter(Boolean) : [],
       vendors: [],
-      stock: inStockParam === 'true' ? 'in-stock' : null,
+      stock: (inStockParam === 'true' || inStockParam === 'in-stock') ? 'in-stock' : null,
     }
   }, [searchParams, categoryFilter, collectionFilter])
 
@@ -110,8 +112,7 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
   const [totalCount, setTotalCount] = useState<number>(0)
   const [totalPagesCount, setTotalPagesCount] = useState<number>(1)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-
-  const itemsPerPage = 12
+  const itemsPerPage = isCreatorsFavouriteMode ? 100 : 48
 
   // Update URL Search Params helper
   const updateUrlParams = useCallback(
@@ -123,7 +124,7 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
         nextParams.set('category', newFilters.category)
       }
 
-      if (!isNewArrivalsMode && !isMegaSaleMode && !isBestsellersMode && newFilters.collection) {
+      if (!isNewArrivalsMode && !isMegaSaleMode && !isBestsellersMode && !isCreatorsFavouriteMode && newFilters.collection) {
         nextParams.set('collection', newFilters.collection)
       }
 
@@ -166,9 +167,9 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
         nextParams.set('page', String(activePage))
       }
 
-      setSearchParams(nextParams)
+      setSearchParams(nextParams, { replace: true })
     },
-    [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, sortBy, setSearchParams]
+    [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, isCreatorsFavouriteMode, sortBy, setSearchParams]
   )
 
   const handleFilterChange = (nextFilters: ProductFilters) => {
@@ -273,7 +274,10 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
   // Breadcrumbs
   const breadcrumbs = useMemo(() => {
     const list = [{ label: 'Home', url: '/' }]
-    if (isCategoryMode) {
+    if (filters.title) {
+      list.push({ label: 'All Products', url: '/all-products' })
+      list.push({ label: `Search: "${filters.title}"`, url: '' })
+    } else if (isCategoryMode) {
       list.push({ label: 'All Products', url: '/all-products' })
       list.push({ label: categoryName || 'Category', url: '' })
     } else if (isNewArrivalsMode) {
@@ -282,14 +286,19 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
       list.push({ label: 'Mega Sale Collection', url: '' })
     } else if (isBestsellersMode) {
       list.push({ label: 'Best Sellers', url: '' })
+    } else if (isCreatorsFavouriteMode) {
+      list.push({ label: "Creators' Favourite Collection", url: '' })
     } else {
       list.push({ label: 'All Products', url: '' })
     }
     return list
-  }, [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, categoryName])
+  }, [filters.title, isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, isCreatorsFavouriteMode, categoryName])
 
   // Heading
   const heading = useMemo(() => {
+    if (filters.title) {
+      return `Search Results for "${filters.title}"`
+    }
     if (isCategoryMode) {
       return categoryName || 'Category Collection'
     }
@@ -302,21 +311,24 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
     if (isBestsellersMode) {
       return 'Best Sellers'
     }
+    if (isCreatorsFavouriteMode) {
+      return "Creators' Favourite Collection"
+    }
     return 'All Products'
-  }, [isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, categoryName])
+  }, [filters.title, isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, isCreatorsFavouriteMode, categoryName])
 
   const chips = useMemo(
     () =>
       getActiveFilterChips(filters, facets, {
         lockCategory: isCategoryMode,
-        lockCollection: Boolean(isNewArrivalsMode || isMegaSaleMode || isBestsellersMode),
+        lockCollection: Boolean(isNewArrivalsMode || isMegaSaleMode || isBestsellersMode || isCreatorsFavouriteMode),
       }),
-    [filters, facets, isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode]
+    [filters, facets, isCategoryMode, isNewArrivalsMode, isMegaSaleMode, isBestsellersMode, isCreatorsFavouriteMode]
   )
 
   const activeCount = countActiveFilters(filters, {
     lockCategory: isCategoryMode,
-    lockCollection: Boolean(isNewArrivalsMode || isMegaSaleMode || isBestsellersMode),
+    lockCollection: Boolean(isNewArrivalsMode || isMegaSaleMode || isBestsellersMode || isCreatorsFavouriteMode),
   })
 
   // Pagination bounds
@@ -353,14 +365,14 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
         </nav>
 
         {/* Attractive Compact Page Header */}
-        <div className="mb-5 sm:mb-6 text-center">
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-[#2c2420] tracking-tight">
+        <div className="mb-4 sm:mb-6 text-center">
+          <h1 className="font-display text-xl xs:text-2xl sm:text-3xl md:text-4xl font-semibold text-[#2c2420] tracking-tight px-1 leading-tight">
             {heading}
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-2.5" aria-hidden="true">
-            <span className="h-px w-8 sm:w-14 bg-gradient-to-r from-transparent to-[#c9973a]/70" />
+          <div className="flex items-center justify-center gap-2 mt-2 sm:mt-2.5" aria-hidden="true">
+            <span className="h-px w-6 sm:w-12 md:w-14 bg-gradient-to-r from-transparent to-[#c9973a]/70" />
             <span className="w-1.5 h-1.5 rotate-45 border border-[#c9973a] bg-[#c9973a]/30" />
-            <span className="h-px w-8 sm:w-14 bg-gradient-to-l from-transparent to-[#c9973a]/70" />
+            <span className="h-px w-6 sm:w-12 md:w-14 bg-gradient-to-l from-transparent to-[#c9973a]/70" />
           </div>
         </div>
 
@@ -532,29 +544,61 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
             )}
 
             {/* Pagination Bar */}
-            {!loading && totalPagesCount > 1 && (
+            {!loading && !isCreatorsFavouriteMode && totalPagesCount > 1 && (
               <nav
                 role="navigation"
                 aria-label="Pagination"
-                className="mt-12 pt-6 border-t border-stone-200 flex items-center justify-center gap-1.5 sm:gap-2"
+                className="mt-10 sm:mt-12 pt-6 border-t border-stone-200 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-2"
               >
+                {/* Prev Button */}
                 <button
                   type="button"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl disabled:opacity-40 hover:bg-stone-50 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
                   aria-label="Previous page"
                 >
-                  ← Prev
+                  <span className="text-sm leading-none">‹</span>
+                  <span className="hidden xs:inline">Prev</span>
                 </button>
 
-                <div className="flex items-center gap-1">
+                {/* Mobile: Compact Page Numbers (< sm) */}
+                <div className="flex sm:hidden items-center gap-1">
+                  {Array.from(new Set([1, currentPage, totalPagesCount]))
+                    .sort((a, b) => a - b)
+                    .map((pageNum, idx, arr) => {
+                      const prev = arr[idx - 1]
+                      const showEllipsis = prev && pageNum - prev > 1
+                      const isActive = currentPage === pageNum
+                      return (
+                        <div key={pageNum} className="flex items-center gap-1">
+                          {showEllipsis && <span className="text-stone-400 text-xs px-0.5 select-none">…</span>}
+                          <button
+                            type="button"
+                            onClick={() => handlePageChange(pageNum)}
+                            aria-current={isActive ? 'page' : undefined}
+                            aria-label={`Page ${pageNum}`}
+                            className={`min-w-8 h-8 px-2 flex items-center justify-center text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-[#769055] text-white shadow-2xs'
+                                : 'text-stone-700 bg-white border border-stone-200 hover:bg-stone-100'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        </div>
+                      )
+                    })}
+                </div>
+
+                {/* Desktop & Tablet: Full page buttons (sm+) */}
+                <div className="hidden sm:flex items-center gap-1.5">
                   {paginationPages.map((item, idx) => {
                     if (item === '...') {
                       return (
                         <span
                           key={`dots-${idx}`}
-                          className="w-8 h-8 flex items-center justify-center text-xs text-stone-400 select-none"
+                          className="w-9 h-9 flex items-center justify-center text-xs text-stone-400 select-none"
                         >
                           ...
                         </span>
@@ -569,9 +613,9 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
                         onClick={() => handlePageChange(pageNum)}
                         aria-current={isActive ? 'page' : undefined}
                         aria-label={`Page ${pageNum}`}
-                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xs font-bold rounded-xs transition-all cursor-pointer ${
+                        className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-xl transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#3e502a] text-white shadow-xs'
+                            ? 'bg-[#769055] text-white shadow-2xs'
                             : 'text-stone-700 bg-white border border-stone-200 hover:bg-stone-100'
                         }`}
                       >
@@ -581,14 +625,16 @@ export function ProductListingPage({ mode = 'all-products' }: ProductListingPage
                   })}
                 </div>
 
+                {/* Next Button */}
                 <button
                   type="button"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPagesCount}
-                  className="px-3 py-1.5 text-xs font-semibold text-stone-700 disabled:text-stone-300 hover:text-black transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl disabled:opacity-40 hover:bg-stone-50 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
                   aria-label="Next page"
                 >
-                  Next →
+                  <span className="hidden xs:inline">Next</span>
+                  <span className="text-sm leading-none">›</span>
                 </button>
               </nav>
             )}

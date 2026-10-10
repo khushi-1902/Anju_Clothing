@@ -25,11 +25,11 @@ interface MobileSliderProps {
 export function MobileSlider({
   children,
   itemCount,
-  desktopGridClassName = 'md:grid-cols-4',
+  desktopGridClassName = 'lg:grid-cols-4',
   showDesktopArrows = true,
   indicatorType = 'bar',
   className = '',
-  gapClassName = 'gap-3.5 sm:gap-5 md:gap-6',
+  gapClassName = 'gap-3.5 sm:gap-4 md:gap-5 lg:gap-6',
 }: MobileSliderProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -88,17 +88,17 @@ export function MobileSlider({
 
   return (
     <div className={`relative group/slider w-full ${className}`}>
-      {/* Slider & Grid Wrapper */}
+      {/* Slider & Grid Wrapper (Horizontal Slider on Mobile & Tablet, Grid on Desktop lg 1024px+) */}
       <div
         ref={scrollRef}
         className={[
-          // Mobile (<768px): horizontal flex swipe container with scroll snap
+          // Mobile & Tablet (<1024px): horizontal flex swipe container with scroll snap
           'flex overflow-x-auto overscroll-x-contain snap-x snap-mandatory',
           '-mx-4 px-4 sm:-mx-6 sm:px-6 py-2 scroll-px-4 sm:scroll-px-6',
           '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
           '[-webkit-overflow-scrolling:touch]',
-          // Desktop (>=768px): clean CSS Grid without scroll
-          'md:grid md:overflow-visible md:mx-0 md:px-0 md:py-0 md:snap-none',
+          // Desktop (>=1024px): clean CSS Grid without scroll
+          'lg:grid lg:overflow-visible lg:mx-0 lg:px-0 lg:py-0 lg:snap-none',
           desktopGridClassName,
           gapClassName,
         ].join(' ')}
@@ -109,12 +109,15 @@ export function MobileSlider({
           return (
             <div
               className={[
-                // Mobile: ~44% viewport width (approx 2.2 cards visible), ~30% on sm (approx 3.2 cards visible)
-                'flex-none w-[44vw] min-w-[150px] max-w-[220px]',
-                'sm:w-[30vw] sm:min-w-[190px] sm:max-w-[260px]',
+                // Mobile (<640px): compact card size (~44vw) so multiple cards are visible
+                'flex-none w-[44vw] min-w-[145px] max-w-[195px]',
+                // Small tablet / Phablet (640px - 768px): ~34vw
+                'sm:w-[34vw] sm:min-w-[180px] sm:max-w-[230px]',
+                // Tablet (768px - 1024px): ~28vw
+                'md:w-[28vw] md:min-w-[170px] md:max-w-[220px]',
                 'snap-start',
-                // Desktop: reset width and snap for standard grid cell
-                'md:w-auto md:min-w-0 md:max-w-none md:flex-initial md:snap-align-none',
+                // Desktop (>=1024px): reset width and snap for standard grid cell
+                'lg:w-auto lg:min-w-0 lg:max-w-none lg:flex-initial lg:snap-align-none',
               ].join(' ')}
             >
               {child}
@@ -123,7 +126,7 @@ export function MobileSlider({
         })}
       </div>
 
-      {/* Desktop Prev/Next Navigation Arrows (768px+) */}
+      {/* Desktop Prev/Next Navigation Arrows (1024px+) */}
       {showDesktopArrows && totalItems > 3 && (
         <>
           <button
@@ -131,7 +134,7 @@ export function MobileSlider({
             onClick={() => scrollByAmount('left')}
             disabled={!canScrollLeft}
             aria-label="Previous items"
-            className={`hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-ivory/95 border border-gold/40 text-charcoal shadow-md items-center justify-center backdrop-blur-xs transition-all duration-200 z-20 cursor-pointer hover:bg-white hover:border-gold hover:scale-105 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-gold/60 ${
+            className={`hidden lg:flex absolute -left-4 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-ivory/95 border border-gold/40 text-charcoal shadow-md items-center justify-center backdrop-blur-xs transition-all duration-200 z-20 cursor-pointer hover:bg-white hover:border-gold hover:scale-105 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-gold/60 ${
               canScrollLeft ? 'opacity-0 group-hover/slider:opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           >
@@ -145,7 +148,7 @@ export function MobileSlider({
             onClick={() => scrollByAmount('right')}
             disabled={!canScrollRight}
             aria-label="Next items"
-            className={`hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-ivory/95 border border-gold/40 text-charcoal shadow-md items-center justify-center backdrop-blur-xs transition-all duration-200 z-20 cursor-pointer hover:bg-white hover:border-gold hover:scale-105 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-gold/60 ${
+            className={`hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-ivory/95 border border-gold/40 text-charcoal shadow-md items-center justify-center backdrop-blur-xs transition-all duration-200 z-20 cursor-pointer hover:bg-white hover:border-gold hover:scale-105 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-gold/60 ${
               canScrollRight ? 'opacity-0 group-hover/slider:opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           >
@@ -156,12 +159,12 @@ export function MobileSlider({
         </>
       )}
 
-      {/* Mobile Scroll Indicator (<768px) */}
+      {/* Scroll Indicator (<1024px) */}
       {totalItems > 2 && (
-        <div className="md:hidden flex justify-center items-center pt-3 pb-1" aria-hidden="true">
+        <div className="lg:hidden flex justify-center items-center pt-3 pb-1" aria-hidden="true">
           {indicatorType === 'bar' ? (
             // Elegant thin progress bar matching gold accent
-            <div className="w-20 h-1 bg-border/60 rounded-full overflow-hidden">
+            <div className="w-24 h-1 bg-border/60 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gold rounded-full transition-all duration-150 ease-out"
                 style={{

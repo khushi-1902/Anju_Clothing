@@ -58,11 +58,15 @@ export function ProductFormModal({
   const [isNewArrival, setIsNewArrival] = useState(false)
   const [isBestseller, setIsBestseller] = useState(false)
   const [isSale, setIsSale] = useState(false)
+  const [videoUrl, setVideoUrl] = useState('')
+  const [isCreatorsFavourite, setIsCreatorsFavourite] = useState(false)
 
   // Media
   const [images, setImages] = useState<{ url: string; alt?: string; position: number }[]>([])
   const [imageUrlInput, setImageUrlInput] = useState('')
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   // Variants
   const [variants, setVariants] = useState<FormVariant[]>([
@@ -71,6 +75,7 @@ export function ProductFormModal({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null)
 
   // Prefill for edit mode
   useEffect(() => {
@@ -86,6 +91,8 @@ export function ProductFormModal({
       setIsNewArrival(Boolean(editingProduct.isNewArrival))
       setIsBestseller(Boolean(editingProduct.isBestseller))
       setIsSale(Boolean(editingProduct.isSale))
+      setVideoUrl(editingProduct.videoUrl || '')
+      setIsCreatorsFavourite(Boolean(editingProduct.isCreatorsFavourite))
 
       // Images
       if (editingProduct.images && editingProduct.images.length > 0) {
@@ -107,16 +114,24 @@ export function ProductFormModal({
             id: v.id,
             size: v.size || 'Free Size',
             color: v.color || '',
-            stock: v.stock ?? 10,
+            stock: v.stock,
             price: v.price ? String(v.price) : '',
             compareAtPrice: v.compareAtPrice ? String(v.compareAtPrice) : '',
           }))
         )
       } else {
-        setVariants([{ size: 'Free Size', color: '', stock: 10, price: '', compareAtPrice: '' }])
+        setVariants([
+          {
+            size: 'Free Size',
+            color: '',
+            stock: 10,
+            price: editingProduct.price ? String(editingProduct.price) : '',
+            compareAtPrice: '',
+          },
+        ])
       }
     } else {
-      // Reset defaults for creation
+      // Reset for new product
       setName('')
       setHandle('')
       setCategory(CATEGORIES[0])
@@ -128,22 +143,23 @@ export function ProductFormModal({
       setIsNewArrival(true)
       setIsBestseller(false)
       setIsSale(false)
+      setVideoUrl('')
+      setIsCreatorsFavourite(false)
       setImages([])
       setVariants([{ size: 'Free Size', color: '', stock: 10, price: '', compareAtPrice: '' }])
     }
     setError(null)
   }, [editingProduct, isOpen])
 
-  // Auto-generate slug when title changes in creation mode
+  // Slug generator helper
   const handleNameChange = (val: string) => {
     setName(val)
     if (!editingProduct) {
-      const slug = val
+      const generatedSlug = val
         .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w\-]+/g, '')
-      setHandle(slug)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+      setHandle(generatedSlug)
     }
   }
 
@@ -171,6 +187,42 @@ export function ProductFormModal({
     } finally {
       setUploadingImages(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // Cloudinary Video Upload Handler
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const file = files[0]
+    // Check client-side file size (e.g. 100MB max)
+    if (file.size > 100 * 1024 * 1024) {
+      setVideoUploadError('Video file exceeds 100MB limit. Please select a shorter or compressed clip.')
+      if (videoInputRef.current) videoInputRef.current.value = ''
+      return
+    }
+
+    try {
+      setUploadingVideo(true)
+      setVideoUploadError(null)
+      setError(null)
+      const token = await getToken()
+      const uploaded = await uploadProductImages(token || '', [file])
+      if (uploaded && uploaded.length > 0 && uploaded[0].url) {
+        setVideoUrl(uploaded[0].url)
+        setIsCreatorsFavourite(true) // Automatically enable creators favourite flag when video is added!
+      } else {
+        throw new Error('Video uploaded but no URL was returned by server')
+      }
+    } catch (err: any) {
+      console.error('Video upload error:', err)
+      const msg = err.message || 'Failed to upload video to Cloudinary'
+      setVideoUploadError(msg)
+      setError(msg)
+    } finally {
+      setUploadingVideo(false)
+      if (videoInputRef.current) videoInputRef.current.value = ''
     }
   }
 
@@ -250,11 +302,13 @@ export function ProductFormModal({
         fabric: fabric.trim() || undefined,
         work: work.trim() || undefined,
         descriptionHtml: descriptionHtml.trim() || undefined,
-        price: Math.round(Number(price)),
-        comparePrice: comparePrice && !isNaN(Number(comparePrice)) ? Math.round(Number(comparePrice)) : null,
+        price: Number(price),
+        comparePrice: comparePrice && Number(comparePrice) > 0 ? Number(comparePrice) : undefined,
         isNewArrival,
         isBestseller,
         isSale,
+        videoUrl: videoUrl.trim() || undefined,
+        isCreatorsFavourite,
         images: images.map((img, idx) => ({
           url: img.url,
           alt: img.alt || name.trim(),
@@ -262,16 +316,16 @@ export function ProductFormModal({
         })),
         variants: variants.map((v) => ({
           id: v.id,
-          size: v.size || 'Free Size',
-          color: v.color.trim() || null,
-          price: v.price && !isNaN(Number(v.price)) ? Math.round(Number(v.price)) : Math.round(Number(price)),
-          compareAtPrice: v.compareAtPrice && !isNaN(Number(v.compareAtPrice)) ? Math.round(Number(v.compareAtPrice)) : null,
+          size: v.size.trim() || 'Free Size',
+          color: v.color.trim() || undefined,
           stock: Number(v.stock) || 0,
+          price: v.price && Number(v.price) > 0 ? Number(v.price) : Number(price),
+          compareAtPrice: v.compareAtPrice && Number(v.compareAtPrice) > 0 ? Number(v.compareAtPrice) : undefined,
         })),
       }
 
       let savedProduct: AdminProduct
-      if (editingProduct?.id) {
+      if (editingProduct) {
         savedProduct = await updateAdminProduct(token || '', editingProduct.id, payload)
       } else {
         savedProduct = await createAdminProduct(token || '', payload)
@@ -295,44 +349,45 @@ export function ProductFormModal({
       : 0
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-[#FAF8F5] border border-[#EBE4D8] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-charcoal">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 lg:p-6 animate-in fade-in duration-200">
+      <div className="bg-[#FAF8F5] border border-[#EBE4D8] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden text-charcoal">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-white border-b border-[#EBE4D8] flex items-center justify-between sticky top-0 z-10">
-          <div>
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-white border-b border-[#EBE4D8] flex items-center justify-between sticky top-0 z-10 shrink-0">
+          <div className="min-w-0 pr-2">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{editingProduct ? '✏️' : '✨'}</span>
-              <h2 className="text-base sm:text-lg font-bold text-[#202223]">
-                {editingProduct ? `Edit Product: ${editingProduct.name}` : 'Add New Product'}
+              <span className="text-lg">{editingProduct ? '✏️' : '✨'}</span>
+              <h2 className="text-sm sm:text-base font-bold text-[#202223] truncate">
+                {editingProduct ? `Edit: ${editingProduct.name}` : 'Add New Product'}
               </h2>
             </div>
-            <p className="text-xs text-[#6D7175] mt-0.5">
+            <p className="text-[11px] text-[#6D7175] mt-0.5 truncate hidden sm:block">
               {editingProduct
-                ? 'Update details, Cloudinary media, pricing, and variants.'
-                : 'Fill in details below to publish this luxury outfit to the storefront.'}
+                ? 'Update product details, Cloudinary images, and variants.'
+                : 'Publish a new handcrafted designer outfit to the store.'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-lg font-bold"
+            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-base font-bold shrink-0"
+            aria-label="Close"
           >
             ✕
           </button>
         </div>
 
         {/* Modal Body (Scrollable Form) */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6">
           
           {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-start gap-2">
-              <span className="text-base leading-none">⚠️</span>
+            <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-start gap-2">
+              <span className="text-sm leading-none">⚠️</span>
               <span className="font-semibold">{error}</span>
             </div>
           )}
 
           {/* Section 1: Basic Information */}
-          <div className="bg-white border border-[#E1E3E5] rounded-xl p-5 shadow-xs space-y-4">
+          <div className="bg-white border border-[#E1E3E5] rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] border-b border-gray-100 pb-2 flex items-center gap-1.5">
               <span>🏷️</span> General Information
             </h3>
@@ -348,7 +403,7 @@ export function ProductFormModal({
                   placeholder="e.g. Royal Emerald Green Banarasi Silk Saree"
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3.5 py-2.5 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
+                  className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-2 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
                 />
               </div>
 
@@ -360,7 +415,7 @@ export function ProductFormModal({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-2 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
+                    className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -406,7 +461,7 @@ export function ProductFormModal({
                   placeholder="Describe the silhouette, embellishments, occasions, and styling notes..."
                   value={descriptionHtml}
                   onChange={(e) => setDescriptionHtml(e.target.value)}
-                  className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg p-3 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
+                  className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg p-2.5 text-xs font-medium text-charcoal focus:bg-white focus:outline-none focus:border-[#769055] transition-colors"
                 />
               </div>
 
@@ -426,10 +481,10 @@ export function ProductFormModal({
           </div>
 
           {/* Section 2: Pricing & Storefront Flags */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
             
             {/* Pricing Card */}
-            <div className="bg-white border border-[#E1E3E5] rounded-xl p-5 shadow-xs space-y-3">
+            <div className="bg-white border border-[#E1E3E5] rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] border-b border-gray-100 pb-2 flex items-center gap-1.5">
                 <span>💰</span> Pricing
               </h3>
@@ -448,103 +503,232 @@ export function ProductFormModal({
                       placeholder="3499"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-charcoal focus:bg-white focus:outline-none focus:border-[#769055]"
+                      className="w-full pl-7 pr-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs font-bold text-charcoal focus:bg-white focus:outline-none focus:border-[#769055]"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#202223] mb-1">
-                    Compare-at Price (₹)
+                    Compare Price (MRP)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-xs font-bold text-gray-400">₹</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       placeholder="4999"
                       value={comparePrice}
                       onChange={(e) => setComparePrice(e.target.value)}
-                      className="w-full bg-[#FAF8F5] border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-xs font-medium text-gray-600 focus:bg-white focus:outline-none focus:border-[#769055]"
+                      className="w-full pl-7 pr-3 py-2 bg-[#FAF8F5] border border-gray-300 rounded-lg text-xs font-medium text-gray-600 focus:bg-white focus:outline-none focus:border-[#769055]"
                     />
                   </div>
                 </div>
               </div>
 
               {discountPercent > 0 && (
-                <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px] font-bold flex items-center justify-between">
-                  <span>Discount Tag Applied:</span>
-                  <span className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-extrabold">
-                    {discountPercent}% OFF
-                  </span>
+                <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] font-bold text-emerald-800 flex items-center justify-between">
+                  <span>Customer Savings:</span>
+                  <span>{discountPercent}% OFF MRP</span>
                 </div>
               )}
             </div>
 
-            {/* Badges & Flags */}
-            <div className="bg-white border border-[#E1E3E5] rounded-xl p-5 shadow-xs space-y-3">
+            {/* Storefront Badges */}
+            <div className="bg-white border border-[#E1E3E5] rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] border-b border-gray-100 pb-2 flex items-center gap-1.5">
-                <span>🏷️</span> Storefront Badges & Visibility
+                <span>🏷️</span> Storefront Badges
               </h3>
 
-              <div className="space-y-2.5 pt-1">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <div className="space-y-2 text-xs">
+                <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isNewArrival}
                     onChange={(e) => setIsNewArrival(e.target.checked)}
-                    className="w-4 h-4 text-[#769055] rounded focus:ring-0 cursor-pointer"
+                    className="rounded text-[#769055] focus:ring-[#769055]"
                   />
-                  <div>
-                    <span className="text-xs font-bold text-charcoal">✦ New Arrival</span>
-                    <p className="text-[10px] text-gray-500">Feature in the 'New Arrivals' curated shelf</p>
-                  </div>
+                  <span className="font-semibold text-charcoal">Mark as New Arrival</span>
+                  <span className="text-[10px] bg-[#F0F5EB] text-[#4A6333] px-1.5 py-0.2 rounded font-bold ml-auto">NEW</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isBestseller}
                     onChange={(e) => setIsBestseller(e.target.checked)}
-                    className="w-4 h-4 text-[#769055] rounded focus:ring-0 cursor-pointer"
+                    className="rounded text-[#769055] focus:ring-[#769055]"
                   />
-                  <div>
-                    <span className="text-xs font-bold text-charcoal">★ Bestseller</span>
-                    <p className="text-[10px] text-gray-500">Show on the 'Shop Bestsellers' page</p>
-                  </div>
+                  <span className="font-semibold text-charcoal">Mark as Bestseller</span>
+                  <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold ml-auto">HOT</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isSale}
                     onChange={(e) => setIsSale(e.target.checked)}
-                    className="w-4 h-4 text-[#769055] rounded focus:ring-0 cursor-pointer"
+                    className="rounded text-[#769055] focus:ring-[#769055]"
                   />
-                  <div>
-                    <span className="text-xs font-bold text-charcoal">% Festive Sale Flag</span>
-                    <p className="text-[10px] text-gray-500">Display special festive promotional tag</p>
-                  </div>
+                  <span className="font-semibold text-charcoal">Include in Festive Sale</span>
+                  <span className="text-[10px] bg-rose-100 text-rose-900 px-1.5 py-0.2 rounded font-bold ml-auto">SALE</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-amber-50/50 hover:bg-amber-50 cursor-pointer border border-amber-200/60">
+                  <input
+                    type="checkbox"
+                    checked={isCreatorsFavourite}
+                    onChange={(e) => setIsCreatorsFavourite(e.target.checked)}
+                    className="rounded text-[#c49332] focus:ring-[#c49332]"
+                  />
+                  <span className="font-semibold text-[#664b11]">Creators' Favourite Collection</span>
+                  <span className="text-[10px] bg-[#c49332] text-white px-1.5 py-0.2 rounded font-bold ml-auto">CREATOR</span>
                 </label>
               </div>
             </div>
           </div>
 
-          {/* Section 3: Cloudinary Media Upload */}
-          <div className="bg-white border border-[#E1E3E5] rounded-xl p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] flex items-center gap-1.5">
-                <span>📸</span> Product Photos (Cloudinary CDN)
+          {/* Section 3A: Creators' Showcase Video (Cloudinary Auto-Transcoded) */}
+          <div className="bg-white border-2 border-amber-200/70 rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-100 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#c49332] flex items-center gap-1.5">
+                <span>🎬</span> Influencer & Creators' Video Reel (Homepage Card)
               </h3>
-              <span className="text-[11px] text-gray-500">
-                {images.length} {images.length === 1 ? 'image' : 'images'} added
+              <span className="text-[11px] text-[#6D7175]">Preview image by default • Plays video on cursor hover</span>
+            </div>
+
+            {/* Direct Collection Toggle */}
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="creators-favourite-direct"
+                  checked={isCreatorsFavourite}
+                  onChange={(e) => setIsCreatorsFavourite(e.target.checked)}
+                  className="rounded text-[#c49332] focus:ring-[#c49332] w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="creators-favourite-direct" className="cursor-pointer text-xs font-bold text-[#664b11]">
+                  Feature in Homepage Influencer / Creators' Collection
+                </label>
+              </div>
+              <span className="text-[10px] bg-[#c49332] text-white px-2 py-0.5 rounded-full font-bold">
+                {isCreatorsFavourite ? '⭐ FEATURED' : 'OPTIONAL'}
               </span>
             </div>
 
-            {/* Cloudinary Drag & Drop Box */}
+            <p className="text-[11px] text-[#5D6F4E] leading-relaxed">
+              Upload an MP4 or paste a video link. The homepage card will display the product photo as the preview and play this reel smoothly when the shopper moves their cursor over the card.
+            </p>
+
+            {videoUploadError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span className="font-semibold">{videoUploadError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVideoUploadError(null)}
+                  className="text-xs text-rose-600 hover:text-rose-900 font-bold px-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              {/* Video Upload & URL */}
+              <div className="space-y-2.5">
+                <div
+                  onClick={() => !uploadingVideo && videoInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all group ${
+                    uploadingVideo
+                      ? 'border-[#c49332] bg-amber-50/50 cursor-wait'
+                      : 'border-[#d5cfc1] hover:border-[#c49332] bg-[#fbf9f4] hover:bg-white'
+                  }`}
+                >
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime,video/*"
+                    onChange={handleVideoUpload}
+                    disabled={uploadingVideo}
+                    className="hidden"
+                  />
+                  <div className="w-10 h-10 bg-white rounded-full shadow-xs border border-[#E1E3E5] mx-auto flex items-center justify-center text-base group-hover:scale-110 transition-transform">
+                    {uploadingVideo ? (
+                      <span className="inline-block w-4 h-4 border-2 border-[#c49332] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      '📹'
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-[#202223] mt-2">
+                    {uploadingVideo ? 'Uploading Video to Cloudinary (please wait)...' : 'Upload Video Reel from Computer (MP4 / WebM / MOV)'}
+                  </p>
+                  <p className="text-[10px] text-[#6D7175] mt-0.5">
+                    {uploadingVideo ? 'Optimizing video for fast mobile & desktop streaming' : 'Supports video files up to 100MB'}
+                  </p>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="url"
+                    placeholder="Or paste Cloudinary/MP4 Video URL"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    className="flex-1 bg-[#FAF8F5] border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-charcoal focus:bg-white focus:outline-none focus:border-[#c49332]"
+                  />
+                  {videoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setVideoUrl('')}
+                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Video Preview */}
+              <div className="bg-[#FAF8F5] border border-gray-200 rounded-xl p-2.5 flex items-center justify-center min-h-[140px]">
+                {videoUrl ? (
+                  <div className="relative w-full max-w-[180px] aspect-9/16 rounded-lg overflow-hidden bg-black shadow-md mx-auto">
+                    <video
+                      src={videoUrl}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                      Preview
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-400 text-xs py-4">
+                    <p>No video selected.</p>
+                    <p className="text-[10px] mt-0.5 text-gray-400">If empty, photo cover will be displayed on homepage.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Cloudinary Images */}
+          <div className="bg-white border border-[#E1E3E5] rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-100 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] flex items-center gap-1.5">
+                <span>📸</span> Media & Product Photos ({images.length})
+              </h3>
+              <span className="text-[11px] text-[#6D7175]">First photo is the primary storefront cover</span>
+            </div>
+
+            {/* Drag and drop / file input box */}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#769055]/40 hover:border-[#769055] rounded-xl p-6 text-center bg-[#FAF8F5]/80 hover:bg-[#FAF8F5] transition-all cursor-pointer group"
+              className="border-2 border-dashed border-[#D5DFC9] hover:border-[#769055] bg-[#FAF8F5] hover:bg-white rounded-xl p-4 sm:p-6 text-center cursor-pointer transition-all group"
             >
               <input
                 ref={fileInputRef}
@@ -554,18 +738,18 @@ export function ProductFormModal({
                 onChange={handleFileUpload}
                 className="hidden"
               />
-              <div className="w-12 h-12 bg-white rounded-full shadow-xs border border-[#E1E3E5] mx-auto flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full shadow-xs border border-[#E1E3E5] mx-auto flex items-center justify-center text-lg sm:text-xl group-hover:scale-110 transition-transform">
                 {uploadingImages ? '⏳' : '☁️'}
               </div>
               <p className="text-xs font-bold text-[#202223] mt-2">
-                {uploadingImages ? 'Uploading & Optimizing on Cloudinary...' : 'Click or Drag & Drop Photos Here'}
+                {uploadingImages ? 'Uploading to Cloudinary...' : 'Tap or Drag & Drop Photos Here'}
               </p>
-              <p className="text-[11px] text-[#6D7175] mt-0.5">
-                Upload up to 10 high-resolution PNG, JPG, or WebP images simultaneously
+              <p className="text-[10px] sm:text-[11px] text-[#6D7175] mt-0.5">
+                PNG, JPG, WebP photos
               </p>
             </div>
 
-            {/* Quick URL Input (Alternative) */}
+            {/* Quick URL Input */}
             <div className="flex gap-2 items-center">
               <input
                 type="url"
@@ -585,7 +769,7 @@ export function ProductFormModal({
 
             {/* Uploaded Images Preview Grid */}
             {images.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3 pt-2">
                 {images.map((img, idx) => (
                   <div
                     key={idx}
@@ -601,18 +785,18 @@ export function ProductFormModal({
                     {/* Cover Photo Badge */}
                     {idx === 0 && (
                       <span className="absolute top-1.5 left-1.5 bg-[#769055] text-white text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-xs">
-                        Cover Photo
+                        Cover
                       </span>
                     )}
 
                     {/* Actions Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5 sm:p-2">
                       <div className="flex justify-end">
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(idx)}
                           className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-700 cursor-pointer shadow-md"
-                          title="Remove image"
+                          title="Remove"
                         >
                           ✕
                         </button>
@@ -624,7 +808,7 @@ export function ProductFormModal({
                           onClick={() => handleSetCoverImage(idx)}
                           className="w-full py-1 bg-white/90 hover:bg-white text-charcoal text-[10px] font-bold rounded cursor-pointer transition-colors shadow-xs"
                         >
-                          Set as Cover
+                          Set Cover
                         </button>
                       )}
                     </div>
@@ -635,14 +819,14 @@ export function ProductFormModal({
           </div>
 
           {/* Section 4: Variants & Inventory */}
-          <div className="bg-white border border-[#E1E3E5] rounded-xl p-5 shadow-xs space-y-4">
+          <div className="bg-white border border-[#E1E3E5] rounded-xl p-3.5 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#769055] flex items-center gap-1.5">
-                  <span>📐</span> Sizes, Colors & Stock Inventory
+                  <span>📐</span> Sizes, Colors & Inventory
                 </h3>
                 <p className="text-[11px] text-[#6D7175]">
-                  Manage stock quantities and optional size-based price overrides.
+                  Configure stock quantities and sizes.
                 </p>
               </div>
 
@@ -662,8 +846,72 @@ export function ProductFormModal({
               </div>
             </div>
 
-            {/* Variants Table */}
-            <div className="overflow-x-auto">
+            {/* Mobile View: Variant Cards */}
+            <div className="block sm:hidden space-y-2.5">
+              {variants.map((v, idx) => (
+                <div key={idx} className="p-3 bg-[#FAF8F5] border border-gray-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#202223]">Variant #{idx + 1}</span>
+                    {variants.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveVariant(idx)}
+                        className="text-red-500 hover:text-red-700 text-xs font-bold cursor-pointer"
+                      >
+                        Remove ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Size</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="M, L, Free Size"
+                        value={v.size}
+                        onChange={(e) => handleUpdateVariant(idx, 'size', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs font-bold text-charcoal"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Stock Qty</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={v.stock}
+                        onChange={(e) => handleUpdateVariant(idx, 'stock', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs font-bold text-charcoal"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Color (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Green"
+                        value={v.color}
+                        onChange={(e) => handleUpdateVariant(idx, 'color', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs text-charcoal"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Price Override (₹)</label>
+                      <input
+                        type="number"
+                        placeholder={price || 'Base'}
+                        value={v.price}
+                        onChange={(e) => handleUpdateVariant(idx, 'price', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs text-charcoal"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 text-gray-500 font-bold">
@@ -741,12 +989,12 @@ export function ProductFormModal({
           </div>
 
           {/* Form Actions in Modal Footer */}
-          <div className="pt-4 border-t border-[#EBE4D8] flex items-center justify-end gap-3 sticky bottom-0 bg-[#FAF8F5] py-3">
+          <div className="pt-3 border-t border-[#EBE4D8] flex items-center justify-end gap-2 sm:gap-3 sticky bottom-0 bg-[#FAF8F5] py-2 sm:py-3">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-charcoal text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-charcoal text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer text-center"
             >
               Cancel
             </button>
@@ -754,12 +1002,12 @@ export function ProductFormModal({
             <button
               type="submit"
               disabled={saving || uploadingImages}
-              className="px-6 py-2.5 bg-[#769055] hover:bg-[#5e7343] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-md cursor-pointer flex items-center gap-2"
+              className="flex-1 sm:flex-initial px-5 sm:px-6 py-2.5 bg-[#769055] hover:bg-[#5e7343] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 text-center"
             >
               {saving ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving Product...</span>
+                  <span>Saving...</span>
                 </>
               ) : (
                 <span>{editingProduct ? 'Update Product' : 'Publish Product'}</span>

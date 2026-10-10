@@ -1,4 +1,5 @@
 import { pool } from '../db'
+import { notifyNewOrder, notifyCustomerOrderConfirmation } from '../lib/orderNotifier'
 
 export interface ConfirmPaymentParams {
   razorpayOrderId?: string
@@ -115,10 +116,23 @@ export async function confirmOrderPaymentAndDecrementStock({
 
     await client.query('COMMIT')
 
+    const confirmedOrder = updateRes.rows[0]
+
+    // Fire-and-forget: Notify when payment is confirmed for online orders.
+    // Deduplication guarantee: This block only runs when status actually transitioned from not-paid to paid (!isAlreadyPaid).
+    if (!isCod) {
+      notifyNewOrder(confirmedOrder).catch(err => {
+        console.error('[confirmOrderPaymentAndDecrementStock] Failed to send paid order notification:', err)
+      })
+      notifyCustomerOrderConfirmation(confirmedOrder).catch(err => {
+        console.error('[confirmOrderPaymentAndDecrementStock] Failed to send paid customer confirmation:', err)
+      })
+    }
+
     return {
       success: true,
       alreadyProcessed: false,
-      order: updateRes.rows[0],
+      order: confirmedOrder,
     }
   } catch (error: any) {
     await client.query('ROLLBACK')

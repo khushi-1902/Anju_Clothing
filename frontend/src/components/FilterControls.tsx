@@ -81,10 +81,12 @@ function ChevronIcon({ className = 'w-4 h-4' }: { className?: string }) {
 
 export function FilterSection({
   title,
+  badgeCount = 0,
   children,
   defaultOpen = true,
 }: {
   title: string
+  badgeCount?: number
   children: React.ReactNode
   defaultOpen?: boolean
 }) {
@@ -100,9 +102,16 @@ export function FilterSection({
         aria-controls={contentId}
         className="flex w-full cursor-pointer items-center justify-between text-left focus-visible:outline-2 focus-visible:outline-[#3e502a]"
       >
-        <span className="font-serif text-sm font-bold tracking-wide text-[#2c2420] uppercase">
-          {title}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-serif text-sm font-bold tracking-wide text-[#2c2420] uppercase">
+            {title}
+          </span>
+          {badgeCount > 0 && (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#3e502a] text-white px-1 text-[10px] font-bold">
+              {badgeCount}
+            </span>
+          )}
+        </div>
         <ChevronIcon className={`h-4 w-4 text-stone-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -166,10 +175,19 @@ export function FilterControls({
     return () => clearTimeout(handler)
   }, [minInput, maxInput, priceMinBound, priceMaxBound])
 
+  const isValueChecked = (array: string[] = [], val: string) => {
+    if (!val) return false
+    const norm = val.trim().toLowerCase()
+    return array.some(item => item?.trim().toLowerCase() === norm)
+  }
+
   const toggleArrayItem = (key: 'sizes' | 'colors' | 'fabrics' | 'occasions', value: string) => {
-    const current = filters[key]
-    const exists = current.includes(value)
-    const next = exists ? current.filter(v => v !== value) : [...current, value]
+    const current = filters[key] || []
+    const norm = value.trim().toLowerCase()
+    const exists = current.some(v => v?.trim().toLowerCase() === norm)
+    const next = exists
+      ? current.filter(v => v?.trim().toLowerCase() !== norm)
+      : [...current, value]
     onChange({
       ...filters,
       [key]: next,
@@ -186,7 +204,11 @@ export function FilterControls({
   return (
     <div className="w-full select-none text-xs">
       {/* 1. Availability */}
-      <FilterSection title="Availability" defaultOpen={true}>
+      <FilterSection
+        title="Availability"
+        badgeCount={filters.stock === 'in-stock' ? 1 : 0}
+        defaultOpen={true}
+      >
         <label className="group flex cursor-pointer items-center gap-2.5 py-1 text-xs text-charcoal hover:text-black">
           <input
             type="checkbox"
@@ -212,7 +234,11 @@ export function FilterControls({
 
       {/* 2. Category (Hidden if page is locked to category) */}
       {!hideCategory && facets.categories && facets.categories.length > 0 && (
-        <FilterSection title="Category" defaultOpen={true}>
+        <FilterSection
+          title="Category"
+          badgeCount={filters.category && filters.category !== 'all' ? 1 : 0}
+          defaultOpen={true}
+        >
           <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
             <label className="group flex cursor-pointer items-center gap-2.5 py-1 text-xs text-charcoal hover:text-black">
               <input
@@ -271,8 +297,34 @@ export function FilterControls({
       )}
 
       {/* 3. Price Range */}
-      <FilterSection title="Price Range" defaultOpen={true}>
+      <FilterSection
+        title="Price Range"
+        badgeCount={filters.price ? 1 : 0}
+        defaultOpen={true}
+      >
         <div className="space-y-3 pt-1">
+          {/* Quick Presets */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: 'Under ₹1,500', min: priceMinBound, max: 1500 },
+              { label: '₹1,500–₹3,000', min: 1500, max: 3000 },
+              { label: 'Above ₹3,000', min: 3000, max: priceMaxBound },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  setMinInput(String(preset.min))
+                  setMaxInput(String(preset.max))
+                  onChange({ ...filters, price: [preset.min, preset.max] })
+                }}
+                className="px-2 py-0.5 text-[10.5px] rounded-md border border-stone-200 bg-stone-50 hover:bg-[#3e502a]/10 hover:border-[#3e502a] hover:text-[#3e502a] font-medium transition-colors cursor-pointer"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2 text-stone-700">
             <div className="flex-1">
               <label htmlFor="min-price-input" className="block text-[10px] text-stone-400 uppercase font-bold tracking-wider mb-1">
@@ -315,10 +367,14 @@ export function FilterControls({
 
       {/* 4. Size Filter */}
       {facets.sizes && facets.sizes.length > 0 && (
-        <FilterSection title="Size" defaultOpen={true}>
+        <FilterSection
+          title="Size"
+          badgeCount={filters.sizes.length}
+          defaultOpen={true}
+        >
           <div className="grid grid-cols-2 gap-1.5">
             {facets.sizes.map((size: FacetOption) => {
-              const checked = filters.sizes.includes(size.value)
+              const checked = isValueChecked(filters.sizes, size.value)
               return (
                 <label key={size.value} className="group flex cursor-pointer items-center gap-2 py-1 text-xs text-charcoal hover:text-black">
                   <input
@@ -347,10 +403,14 @@ export function FilterControls({
 
       {/* 5. Color Filter with Swatches */}
       {facets.colors && facets.colors.length > 0 && (
-        <FilterSection title="Color" defaultOpen={true}>
+        <FilterSection
+          title="Color"
+          badgeCount={filters.colors.length}
+          defaultOpen={true}
+        >
           <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
             {facets.colors.map((color: FacetOption) => {
-              const checked = filters.colors.includes(color.value)
+              const checked = isValueChecked(filters.colors, color.value)
               const hex = COLOR_HEX[normalize(color.value)] ?? FALLBACK_SWATCH
               const light = isLightColor(hex)
 
@@ -383,10 +443,14 @@ export function FilterControls({
 
       {/* 6. Fabric Filter */}
       {facets.fabrics && facets.fabrics.length > 0 && (
-        <FilterSection title="Fabric" defaultOpen={true}>
+        <FilterSection
+          title="Fabric"
+          badgeCount={filters.fabrics.length}
+          defaultOpen={true}
+        >
           <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
             {facets.fabrics.map((fabric: FacetOption) => {
-              const checked = filters.fabrics.includes(fabric.value)
+              const checked = isValueChecked(filters.fabrics, fabric.value)
               return (
                 <label key={fabric.value} className="group flex cursor-pointer items-center gap-2.5 py-1 text-xs text-charcoal hover:text-black">
                   <input
@@ -404,7 +468,7 @@ export function FilterControls({
                   >
                     {checked && <CheckIcon className="w-3 h-3" />}
                   </span>
-                  <span className="truncate font-medium text-stone-800">{fabric.label}</span>
+                  <span className="truncate font-medium text-stone-800 capitalize">{fabric.label}</span>
                   <span className="text-[10px] text-stone-400">({fabric.count})</span>
                 </label>
               )
@@ -415,10 +479,14 @@ export function FilterControls({
 
       {/* 7. Occasion Filter */}
       {facets.occasions && facets.occasions.length > 0 && (
-        <FilterSection title="Occasion" defaultOpen={true}>
+        <FilterSection
+          title="Occasion"
+          badgeCount={filters.occasions.length}
+          defaultOpen={true}
+        >
           <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
             {facets.occasions.map((occasion: FacetOption) => {
-              const checked = filters.occasions.includes(occasion.value)
+              const checked = isValueChecked(filters.occasions, occasion.value)
               return (
                 <label key={occasion.value} className="group flex cursor-pointer items-center gap-2.5 py-1 text-xs text-charcoal hover:text-black">
                   <input

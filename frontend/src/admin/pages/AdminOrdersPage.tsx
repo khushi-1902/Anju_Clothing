@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { fetchAdminOrders, AdminOrder } from '../adminApi'
 import { OrderDetailModal } from '../components/OrderDetailModal'
+import { OrderBillInvoice } from '../components/OrderBillInvoice'
+import { RazorpayLogo } from '../../components/RazorpayLogo'
 
 const FILTER_TABS = [
   { id: 'all', label: 'All Orders' },
@@ -9,7 +11,7 @@ const FILTER_TABS = [
   { id: 'unpaid', label: 'Unpaid' },
   { id: 'shipped', label: 'In Transit' },
   { id: 'delivered', label: 'Delivered' },
-  { id: 'cancelled', label: 'Refunded / Cancelled' },
+  { id: 'cancelled', label: 'Cancelled' },
 ]
 
 export function AdminOrdersPage() {
@@ -20,6 +22,7 @@ export function AdminOrdersPage() {
   const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [printOrder, setPrintOrder] = useState<AdminOrder | null>(null)
 
   const loadOrders = async () => {
     try {
@@ -88,18 +91,20 @@ export function AdminOrdersPage() {
     )
   }
 
-  const getPaymentStatusPill = (status: string, method?: string) => {
+  const getPaymentStatusPill = (status: string) => {
     const s = String(status || '').toUpperCase()
     if (s === 'PAID') {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+          <RazorpayLogo height={10} variant="icon" />
           Paid
         </span>
       )
     }
     if (s === 'ADVANCE_PAID') {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/80">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/80">
+          <RazorpayLogo height={10} variant="icon" />
           COD (₹200 Adv)
         </span>
       )
@@ -119,27 +124,27 @@ export function AdminOrdersPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-[#232B1E]">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-8 sm:pb-12 font-sans text-[#232B1E]">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-[#1B2513] tracking-tight">Orders</h1>
-            <span className="px-2 py-0.5 bg-[#F0F5EB] border border-[#D5DFC9] rounded-md text-xs font-mono font-medium text-[#4A6333]">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-bold text-[#1B2513] tracking-tight">Orders</h1>
+            <span className="px-2 py-0.5 bg-[#F0F5EB] border border-[#D5DFC9] rounded-md text-xs font-mono font-semibold text-[#4A6333]">
               {orders.length} total
             </span>
           </div>
-          <p className="text-xs text-[#5D6F4E] mt-1">
-            Manage customer orders, track Razorpay transactions, update shipments, and issue refunds.
+          <p className="text-xs text-[#5D6F4E] mt-0.5">
+            Track customer orders, manage shipments, and process refunds.
           </p>
         </div>
       </div>
 
       {/* Control Bar */}
-      <div className="bg-white p-3 rounded-xl border border-[#E3E9DD] shadow-2xs space-y-3">
-        {/* Filter Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+      <div className="bg-white p-3 rounded-xl border border-[#E3E9DD] shadow-2xs space-y-2.5">
+        {/* Filter Tabs with horizontal touch scrolling */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {FILTER_TABS.map(({ id, label }) => {
             const isActive = statusFilter === id
             return (
@@ -158,7 +163,7 @@ export function AdminOrdersPage() {
           })}
         </div>
 
-        {/* Search */}
+        {/* Search Input */}
         <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center pt-2 border-t border-[#EBEFE6]">
           <div className="relative flex-1">
             <svg className="w-4 h-4 text-[#7A8E6A] absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -166,15 +171,15 @@ export function AdminOrdersPage() {
             </svg>
             <input
               type="text"
-              placeholder="Search by order #, customer name, email, or phone..."
+              placeholder="Search by order #, customer, email, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:outline-none focus:border-[#769055] focus:bg-white transition-all text-[#232B1E]"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:outline-none focus:border-[#769055] focus:bg-white transition-all text-[#232B1E]"
             />
           </div>
           <button
             type="submit"
-            className="px-3.5 py-1.5 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            className="px-3.5 py-2 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0"
           >
             Filter
           </button>
@@ -185,7 +190,7 @@ export function AdminOrdersPage() {
                 setSearch('')
                 setStatusFilter('all')
               }}
-              className="px-2.5 py-1.5 text-xs text-[#7A8E6A] hover:text-[#232B1E] transition-colors cursor-pointer"
+              className="px-2.5 py-2 text-xs text-[#7A8E6A] hover:text-[#232B1E] transition-colors cursor-pointer shrink-0"
             >
               Clear
             </button>
@@ -193,9 +198,86 @@ export function AdminOrdersPage() {
         </form>
       </div>
 
-      {/* Table */}
+      {/* Orders Section */}
       <div className="bg-white rounded-xl border border-[#E3E9DD] shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        
+        {/* Mobile View: Order Cards */}
+        <div className="block sm:hidden divide-y divide-[#EBEFE6]">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-3.5 space-y-2 animate-pulse">
+                <div className="h-4 w-28 bg-[#F0F5EB] rounded" />
+                <div className="h-3 w-40 bg-[#F0F5EB] rounded" />
+                <div className="h-4 w-20 bg-[#F0F5EB] rounded" />
+              </div>
+            ))
+          ) : orders.length > 0 ? (
+            orders.map((ord) => {
+              const itemsCount = Array.isArray(ord.items)
+                ? ord.items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
+                : 1
+
+              return (
+                <div
+                  key={ord.orderNumber}
+                  onClick={() => handleOpenOrderDetail(ord)}
+                  className="p-3.5 space-y-2.5 hover:bg-[#F9FAF7] active:bg-[#F0F5EB] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-xs text-[#202E15]">
+                      #{ord.orderNumber}
+                    </span>
+                    <span className="font-bold text-xs text-[#1B2513]">
+                      ₹{ord.totalAmount.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="min-w-0 pr-2">
+                      <p className="font-medium text-[#202E15] truncate">{ord.customerName}</p>
+                      <p className="text-[11px] text-[#7A8E6A] truncate">{ord.customerEmail || ord.customerPhone}</p>
+                    </div>
+                    <div className="text-right text-[11px] text-[#5D6F4E] shrink-0">
+                      <span>{new Date(ord.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      <span className="block text-[10px] text-[#7A8E6A]">{itemsCount} item{itemsCount === 1 ? '' : 's'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-[#EBEFE6]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {getPaymentStatusPill(ord.paymentStatus)}
+                      {getOrderStatusPill(ord.orderStatus)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPrintOrder(ord)
+                        }}
+                        className="px-2 py-0.5 bg-[#FAF8F5] hover:bg-[#F0F5EB] border border-[#D5DFC9] text-[#3E522B] rounded text-[11px] font-semibold cursor-pointer shadow-2xs"
+                        title="Print Bill"
+                      >
+                        🖨️ Bill
+                      </button>
+                      <span className="text-[11px] font-bold text-[#769055]">
+                        View Details →
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="py-12 text-center text-[#7A8E6A] text-xs p-4">
+              <p className="font-semibold text-[#202E15]">No orders found</p>
+              <p className="text-[11px] mt-1">Try selecting a different filter tab or search keyword.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#F7F9F5] border-b border-[#EBEFE6] text-[11px] font-semibold text-[#5D6F4E] uppercase tracking-wider">
@@ -211,22 +293,22 @@ export function AdminOrdersPage() {
             </thead>
             <tbody className="divide-y divide-[#EBEFE6]">
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-32 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 w-20 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3.5 px-4"><div className="h-4 w-12 bg-[#F0F5EB] rounded" /></td>
                     <td className="py-3.5 px-4 text-right"><div className="h-4 w-16 bg-[#F0F5EB] rounded ml-auto" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-6 w-14 bg-[#F0F5EB] rounded ml-auto" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-12 bg-[#F0F5EB] rounded ml-auto" /></td>
                   </tr>
                 ))
               ) : orders.length > 0 ? (
                 orders.map((ord) => {
-                  const itemCount = Array.isArray(ord.items)
-                    ? ord.items.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0)
+                  const itemsCount = Array.isArray(ord.items)
+                    ? ord.items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
                     : 1
 
                   return (
@@ -235,70 +317,64 @@ export function AdminOrdersPage() {
                       onClick={() => handleOpenOrderDetail(ord)}
                       className="hover:bg-[#F9FAF7] transition-colors cursor-pointer group"
                     >
-                      {/* Order Number */}
                       <td className="py-3.5 px-4">
                         <span className="font-mono font-semibold text-[#202E15] group-hover:text-[#769055] transition-colors">
                           #{ord.orderNumber}
                         </span>
                       </td>
-
-                      {/* Date */}
-                      <td className="py-3.5 px-4 text-[#7A8E6A] whitespace-nowrap text-[11px]">
+                      <td className="py-3.5 px-4 text-[#5D6F4E] text-[11px] whitespace-nowrap">
                         {new Date(ord.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
                         })}
                       </td>
-
-                      {/* Customer */}
                       <td className="py-3.5 px-4">
-                        <p className="font-medium text-[#202E15] truncate max-w-[160px]">{ord.customerName}</p>
-                        <p className="text-[11px] text-[#7A8E6A] font-mono truncate max-w-[160px]">{ord.customerEmail}</p>
+                        <div className="font-medium text-[#202E15] truncate max-w-[160px]">
+                          {ord.customerName}
+                        </div>
+                        <div className="text-[11px] text-[#7A8E6A] font-mono truncate max-w-[160px]">
+                          {ord.customerEmail || ord.customerPhone}
+                        </div>
                       </td>
-
-                      {/* Payment */}
                       <td className="py-3.5 px-4">
-                        {getPaymentStatusPill(ord.paymentStatus, ord.paymentMethod)}
+                        {getPaymentStatusPill(ord.paymentStatus)}
                       </td>
-
-                      {/* Fulfillment */}
                       <td className="py-3.5 px-4">
                         {getOrderStatusPill(ord.orderStatus)}
                       </td>
-
-                      {/* Items */}
-                      <td className="py-3.5 px-4 text-[#7A8E6A]">
-                        <span className="font-medium text-[#202E15]">{itemCount}</span> {itemCount === 1 ? 'item' : 'items'}
+                      <td className="py-3.5 px-4 text-[#5D6F4E] font-medium">
+                        {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
                       </td>
-
-                      {/* Total Amount */}
                       <td className="py-3.5 px-4 text-right font-semibold text-[#202E15] tabular-nums">
                         ₹{ord.totalAmount.toLocaleString('en-IN')}
                       </td>
-
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleOpenOrderDetail(ord)}
-                          className="px-2.5 py-1 bg-white border border-[#D5DFC9] hover:border-[#769055] hover:bg-[#F0F5EB] text-[#3E522B] text-xs font-medium rounded-lg transition-colors cursor-pointer shadow-2xs"
-                        >
-                          Inspect →
-                        </button>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPrintOrder(ord)
+                            }}
+                            className="p-1.5 hover:bg-[#F0F5EB] text-[#3E522B] rounded-lg transition-colors cursor-pointer border border-[#E3E9DD] shadow-2xs"
+                            title="Print Bill / Invoice"
+                          >
+                            🖨️
+                          </button>
+                          <span className="inline-flex items-center text-xs font-semibold text-[#769055] group-hover:underline">
+                            Manage →
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-[#7A8E6A]">
-                    <div className="w-10 h-10 rounded-full bg-[#F0F5EB] flex items-center justify-center mx-auto text-[#769055] mb-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                      </svg>
-                    </div>
-                    <p className="font-medium text-[#3A4B29] text-xs">No matching orders</p>
-                    <p className="text-[11px] text-[#7A8E6A] mt-0.5">Try selecting a different filter tab or clearing your search.</p>
+                  <td colSpan={8} className="py-12 text-center text-[#7A8E6A] text-xs">
+                    <p className="font-semibold text-[#202E15]">No orders found</p>
+                    <p className="text-[11px] mt-1">Try selecting a different filter tab or search keyword.</p>
                   </td>
                 </tr>
               )}
@@ -307,13 +383,23 @@ export function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Order Detail Modal */}
       <OrderDetailModal
-        isOpen={isModalOpen}
         order={selectedOrder}
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onOrderUpdated={handleOrderUpdated}
       />
+
+      {/* Standalone Print Bill Modal */}
+      {printOrder && (
+        <OrderBillInvoice
+          order={printOrder}
+          isOpen={true}
+          onClose={() => setPrintOrder(null)}
+        />
+      )}
+
     </div>
   )
 }

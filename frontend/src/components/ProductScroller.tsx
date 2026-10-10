@@ -52,7 +52,7 @@ export function ProductScroller({
         {visible.map((product, index) => (
           <div
             key={product.id}
-            className={`flex-none w-[44vw] min-w-[155px] max-w-[210px] snap-start sm:w-auto sm:min-w-0 sm:max-w-none sm:flex-initial ${
+            className={`flex-none w-[44vw] min-w-[145px] max-w-[195px] snap-start sm:w-auto sm:min-w-0 sm:max-w-none sm:flex-initial ${
               index >= desktopLimit ? 'sm:hidden' : ''
             }`}
           >

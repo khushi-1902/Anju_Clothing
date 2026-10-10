@@ -40,7 +40,7 @@ adminProductsRouter.get('/', async (req: Request, res: Response) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -81,7 +81,7 @@ adminProductsRouter.get('/:idOrHandle', async (req: Request, res: Response) => {
     const { rows } = await pool.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -131,6 +131,8 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
       isNewArrival = false,
       isBestseller = false,
       isSale = false,
+      videoUrl = null,
+      isCreatorsFavourite = false,
       images = [],
       variants = [],
     } = req.body
@@ -160,9 +162,9 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
       `INSERT INTO products (
          handle, name, category, fabric, work, "descriptionHtml",
          price, "comparePrice", "isNewArrival", "isBestseller", "isSale",
-         "createdAt"
+         "videoUrl", "isCreatorsFavourite", "createdAt"
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
        RETURNING id`,
       [
         handle,
@@ -176,6 +178,8 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
         Boolean(isNewArrival),
         Boolean(isBestseller),
         Boolean(isSale),
+        videoUrl && String(videoUrl).trim() ? String(videoUrl).trim() : null,
+        Boolean(isCreatorsFavourite),
       ]
     )
 
@@ -228,7 +232,7 @@ adminProductsRouter.post('/', async (req: Request, res: Response) => {
     const { rows } = await client.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id
@@ -281,6 +285,8 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
       isNewArrival = false,
       isBestseller = false,
       isSale = false,
+      videoUrl = null,
+      isCreatorsFavourite = false,
       images,
       variants,
     } = req.body
@@ -316,8 +322,10 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
            "comparePrice" = $8,
            "isNewArrival" = $9,
            "isBestseller" = $10,
-           "isSale" = $11
-       WHERE id = $12
+           "isSale" = $11,
+           "videoUrl" = $12,
+           "isCreatorsFavourite" = $13
+       WHERE id = $14
        RETURNING id`,
       [
         handle,
@@ -331,6 +339,8 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
         Boolean(isNewArrival),
         Boolean(isBestseller),
         Boolean(isSale),
+        videoUrl && String(videoUrl).trim() ? String(videoUrl).trim() : null,
+        Boolean(isCreatorsFavourite),
         productId,
       ]
     )
@@ -389,7 +399,7 @@ adminProductsRouter.put('/:id', async (req: Request, res: Response) => {
     const { rows } = await client.query(
       `SELECT
          p.id, p.handle, p.name, p.category, p.fabric, p.work, p."descriptionHtml", p.price, p."comparePrice",
-         p."isNewArrival", p."isBestseller", p."isSale", p."createdAt",
+         p."isNewArrival", p."isBestseller", p."isSale", p."videoUrl", p."isCreatorsFavourite", p."createdAt",
          COALESCE((
            SELECT json_agg(json_build_object('id', i.id, 'url', i.url, 'alt', i.alt, 'position', i.position) ORDER BY i.position)
            FROM product_images i WHERE i."productId" = p.id

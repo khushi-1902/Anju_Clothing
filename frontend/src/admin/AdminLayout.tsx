@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
+import anjuLogo from '../assets/anju-clothing-logo.svg'
+import { RazorpayLogo } from '../components/RazorpayLogo'
 
 interface NavItem {
   name: string
@@ -64,6 +66,23 @@ export function AdminLayout() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
+  // Prevent background scroll when mobile menu is active
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
+
   const currentNav = NAV_ITEMS.find((item) =>
     item.to === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(item.to)
   )
@@ -77,13 +96,13 @@ export function AdminLayout() {
     <div className="min-h-screen bg-[#F7F9F5] flex antialiased text-[#232B1E] font-sans">
       
       {/* Sidebar (Desktop) - Luxury Olive Green */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#233019] text-[#E2EBD9] border-r border-[#344426] shrink-0 select-none">
+      <aside className="hidden lg:flex flex-col w-64 bg-[#233019] text-[#E2EBD9] border-r border-[#344426] shrink-0 select-none">
         
         {/* Workspace Brand */}
         <div className="h-16 px-5 flex items-center justify-between border-b border-[#344426]/80 bg-[#1B2513]">
           <Link to="/admin" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-[#769055] border border-[#8FA86E] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-sm">
-              AC
+            <div className="w-8 h-8 rounded-lg bg-white p-1 border border-[#8FA86E] flex items-center justify-center shadow-sm shrink-0">
+              <img src={anjuLogo} alt="Anju Clothing" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -201,12 +220,13 @@ export function AdminLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-[#E3E9DD] px-4 sm:px-8 flex items-center justify-between gap-4 sticky top-0 z-20">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Mobile Menu Button */}
+        <header className="h-14 sm:h-16 bg-white border-b border-[#E3E9DD] px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 text-[#495C38] hover:text-[#233019] rounded-lg hover:bg-[#F0F5EB] cursor-pointer"
+              className="lg:hidden p-2 text-[#495C38] hover:text-[#233019] rounded-lg hover:bg-[#F0F5EB] cursor-pointer shrink-0"
+              aria-label="Open menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -214,28 +234,31 @@ export function AdminLayout() {
             </button>
 
             {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs font-medium text-[#6B7D5C]">
-              <span className="hover:text-[#233019]">Admin</span>
-              <span>/</span>
-              <span className="text-[#233019] font-semibold capitalize">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-medium text-[#6B7D5C] truncate">
+              <span className="hover:text-[#233019] hidden sm:inline">Admin</span>
+              <span className="hidden sm:inline">/</span>
+              <span className="text-[#233019] font-bold sm:font-semibold capitalize truncate">
                 {currentNav?.name || 'Overview'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F4F7ED] border border-[#DCE4D0] text-[11px] font-medium text-[#4D6337]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#769055] animate-pulse" />
-              Razorpay Test Mode
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#0C2340]/15 text-[11px] font-semibold text-[#0C2340] shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0C83FF] animate-pulse" />
+              <RazorpayLogo height={14} variant="full" />
+              <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                LIVE
+              </span>
             </div>
 
             <Link
               to="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#769055] hover:bg-[#5e7343] text-white rounded-lg text-xs font-medium transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#769055] hover:bg-[#5e7343] text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
             >
-              <span>View Store</span>
+              <span>Store</span>
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
               </svg>
@@ -245,48 +268,138 @@ export function AdminLayout() {
 
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+            {/* Backdrop */}
             <div
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
             />
-            <div className="fixed inset-y-0 left-0 w-64 bg-[#233019] text-[#E2EBD9] p-4 flex flex-col z-50 shadow-2xl">
+            
+            {/* Drawer Content */}
+            <div className="fixed inset-y-0 left-0 w-72 sm:w-80 bg-[#233019] text-[#E2EBD9] p-4 flex flex-col z-50 shadow-2xl animate-in slide-in-from-left duration-200">
+              {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-[#344426]">
-                <span className="font-semibold text-white text-sm">Anju Clothing Admin</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#769055] border border-[#8FA86E] flex items-center justify-center text-white font-bold text-xs">
+                    AC
+                  </div>
+                  <div>
+                    <span className="font-semibold text-white text-sm block leading-tight">Anju Clothing</span>
+                    <span className="text-[10px] text-[#A6BA94]">Admin Panel</span>
+                  </div>
+                </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1 text-[#A6BA94] hover:text-white"
+                  className="w-8 h-8 rounded-lg bg-[#2D3D20] text-[#A6BA94] hover:text-white flex items-center justify-center cursor-pointer text-sm"
+                  aria-label="Close menu"
                 >
                   ✕
                 </button>
               </div>
-              <nav className="py-4 space-y-1 flex-1">
-                {NAV_ITEMS.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.to === '/admin'}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                          isActive ? 'bg-[#769055] text-white font-semibold' : 'text-[#C7D9BA] hover:bg-[#2D3D20]'
-                        }`
-                      }
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{item.name}</span>
-                    </NavLink>
-                  )
-                })}
-              </nav>
+
+              {/* Navigation Links */}
+              <div className="py-4 space-y-4 flex-1 overflow-y-auto">
+                <div>
+                  <div className="px-3 pb-2 text-[10px] font-semibold text-[#8DA37B] uppercase tracking-wider">
+                    Management
+                  </div>
+                  <nav className="space-y-1">
+                    {NAV_ITEMS.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          end={item.to === '/admin'}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
+                              isActive ? 'bg-[#769055] text-white shadow-xs' : 'text-[#C7D9BA] hover:bg-[#2D3D20]'
+                            }`
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="w-4 h-4" />
+                            <span>{item.name}</span>
+                          </div>
+                          {item.badge && (
+                            <span className="px-1.5 py-0.5 bg-[#1B2513] text-[#D0E0C2] text-[10px] rounded font-mono">
+                              {item.badge}
+                            </span>
+                          )}
+                        </NavLink>
+                      )
+                    })}
+                  </nav>
+                </div>
+
+                <div>
+                  <div className="px-3 pb-2 text-[10px] font-semibold text-[#8DA37B] uppercase tracking-wider">
+                    Quick Links
+                  </div>
+                  <Link
+                    to="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold text-[#C7D9BA] hover:bg-[#2D3D20] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg className="w-4 h-4 text-[#8DA37B]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                      <span>View Customer Store</span>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-[#82AD4C]" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Mobile User Footer */}
+              <div className="pt-3 border-t border-[#344426]">
+                <div className="p-2.5 rounded-lg bg-[#27361C] border border-[#3A4E2B] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {user?.imageUrl ? (
+                      <img
+                        src={user.imageUrl}
+                        alt="Admin"
+                        className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#769055]"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-[#769055] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        {(user?.firstName?.[0] || 'A').toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-semibold text-[#E2EBD9] truncate">
+                        {user?.fullName || user?.firstName || 'Admin'}
+                      </p>
+                      <p className="text-[10px] text-[#A6BA94] font-mono truncate">
+                        {primaryEmail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      clerk.signOut({ redirectUrl: '/' })
+                    }}
+                    className="p-1.5 text-[#A6BA94] hover:text-white hover:bg-[#344426] rounded transition-colors cursor-pointer"
+                    title="Sign Out"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Body Container */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#F7F9F5]">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#F7F9F5]">
           <Outlet />
         </main>
       </div>

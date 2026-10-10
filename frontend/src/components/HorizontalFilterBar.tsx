@@ -167,10 +167,19 @@ export function HorizontalFilterBar({
     setOpenDropdown(prev => (prev === key ? null : key))
   }
 
+  const isValueChecked = (array: string[] = [], val: string) => {
+    if (!val) return false
+    const norm = val.trim().toLowerCase()
+    return array.some(item => item?.trim().toLowerCase() === norm)
+  }
+
   const toggleArrayItem = (key: 'sizes' | 'colors' | 'fabrics' | 'occasions', value: string) => {
-    const current = filters[key]
-    const exists = current.includes(value)
-    const next = exists ? current.filter(v => v !== value) : [...current, value]
+    const current = filters[key] || []
+    const norm = value.trim().toLowerCase()
+    const exists = current.some(v => v?.trim().toLowerCase() === norm)
+    const next = exists
+      ? current.filter(v => v?.trim().toLowerCase() !== norm)
+      : [...current, value]
     onChange({
       ...filters,
       [key]: next,
@@ -233,7 +242,7 @@ export function HorizontalFilterBar({
             <FilterIcon className="w-3.5 h-3.5 text-[#e8c06a]" />
             <span>Filters</span>
             {activeCount > 0 && (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white text-[#3e502a] px-1 text-[10px] font-bold">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white text-[#3e502a] px-1.5 text-[10px] font-extrabold shadow-xs">
                 {activeCount}
               </span>
             )}
@@ -253,6 +262,11 @@ export function HorizontalFilterBar({
                 }`}
               >
                 <span>{isCategoryActive ? selectedCategoryName : 'Categories'}</span>
+                {isCategoryActive && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#3e502a] text-white px-1 text-[10px] font-bold">
+                    1
+                  </span>
+                )}
                 <ChevronDownIcon
                   className={`w-3.5 h-3.5 text-stone-500 transition-transform duration-200 ${
                     openDropdown === 'category' ? 'rotate-180' : ''
@@ -262,8 +276,22 @@ export function HorizontalFilterBar({
 
               {openDropdown === 'category' && (
                 <div className="absolute top-full left-0 mt-1.5 w-60 rounded-xl bg-white p-2.5 shadow-xl border border-stone-200 max-h-72 overflow-y-auto z-50 text-xs">
-                  <div className="px-2 py-1 mb-1 font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400 border-b border-stone-100">
-                    Select Category
+                  <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-stone-100">
+                    <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                      Category {isCategoryActive && '(1 selected)'}
+                    </span>
+                    {isCategoryActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChange({ ...filters, category: 'all' })
+                          setOpenDropdown(null)
+                        }}
+                        className="text-[11px] font-medium text-[#3e502a] hover:underline cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -347,7 +375,7 @@ export function HorizontalFilterBar({
                 <div className="absolute top-full left-0 mt-1.5 w-52 rounded-xl bg-white p-3 shadow-xl border border-stone-200 z-50 text-xs">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
                     <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                      Sizes
+                      Sizes {isSizeActive && `(${filters.sizes.length} selected)`}
                     </span>
                     {isSizeActive && (
                       <button
@@ -361,7 +389,7 @@ export function HorizontalFilterBar({
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
                     {facets.sizes.map((size: FacetOption) => {
-                      const checked = filters.sizes.includes(size.value)
+                      const checked = isValueChecked(filters.sizes, size.value)
                       return (
                         <label
                           key={size.value}
@@ -423,7 +451,7 @@ export function HorizontalFilterBar({
                 <div className="absolute top-full left-0 mt-1.5 w-60 rounded-xl bg-white p-3 shadow-xl border border-stone-200 z-50 text-xs">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
                     <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                      Colors
+                      Colors {isColorActive && `(${filters.colors.length} selected)`}
                     </span>
                     {isColorActive && (
                       <button
@@ -437,7 +465,7 @@ export function HorizontalFilterBar({
                   </div>
                   <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
                     {facets.colors.map((color: FacetOption) => {
-                      const checked = filters.colors.includes(color.value)
+                      const checked = isValueChecked(filters.colors, color.value)
                       const hex = COLOR_HEX[normalize(color.value)] ?? FALLBACK_SWATCH
                       const light = isLightColor(hex)
 
@@ -450,7 +478,7 @@ export function HorizontalFilterBar({
                             <span
                               style={{ backgroundColor: hex }}
                               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-black/15 shadow-2xs ${
-                                checked ? 'ring-2 ring-black ring-offset-1' : ''
+                                checked ? 'ring-2 ring-[#3e502a] ring-offset-1' : ''
                               }`}
                             >
                               {checked && (
@@ -505,6 +533,11 @@ export function HorizontalFilterBar({
                   ? `₹${filters.price[0]}–₹${filters.price[1]}`
                   : 'Price'}
               </span>
+              {isPriceActive && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#3e502a] text-white px-1 text-[10px] font-bold">
+                  1
+                </span>
+              )}
               <ChevronDownIcon
                 className={`w-3.5 h-3.5 text-stone-500 transition-transform duration-200 ${
                   openDropdown === 'price' ? 'rotate-180' : ''
@@ -516,7 +549,7 @@ export function HorizontalFilterBar({
               <div className="absolute top-full left-0 mt-1.5 w-64 rounded-xl bg-white p-3.5 shadow-xl border border-stone-200 z-50 text-xs">
                 <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-stone-100">
                   <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                    Price Range
+                    Price Range {isPriceActive && '(1 selected)'}
                   </span>
                   {isPriceActive && (
                     <button
@@ -531,6 +564,29 @@ export function HorizontalFilterBar({
                       Reset
                     </button>
                   )}
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {[
+                    { label: 'Under ₹1,500', min: priceMinBound, max: 1500 },
+                    { label: '₹1,500–₹3,000', min: 1500, max: 3000 },
+                    { label: 'Above ₹3,000', min: 3000, max: priceMaxBound },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setMinInput(String(preset.min))
+                        setMaxInput(String(preset.max))
+                        onChange({ ...filters, price: [preset.min, preset.max] })
+                        setOpenDropdown(null)
+                      }}
+                      className="px-2 py-1 text-[10.5px] rounded-md border border-stone-200 bg-stone-50 hover:bg-[#3e502a]/10 hover:border-[#3e502a] hover:text-[#3e502a] font-medium transition-colors cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="flex items-center gap-2 mb-3">
@@ -614,7 +670,7 @@ export function HorizontalFilterBar({
                 <div className="absolute top-full left-0 mt-1.5 w-56 rounded-xl bg-white p-3 shadow-xl border border-stone-200 z-50 text-xs">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
                     <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                      Fabric
+                      Fabric {isFabricActive && `(${filters.fabrics.length} selected)`}
                     </span>
                     {isFabricActive && (
                       <button
@@ -628,13 +684,13 @@ export function HorizontalFilterBar({
                   </div>
                   <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
                     {facets.fabrics.map((fabric: FacetOption) => {
-                      const checked = filters.fabrics.includes(fabric.value)
+                      const checked = isValueChecked(filters.fabrics, fabric.value)
                       return (
                         <label
                           key={fabric.value}
                           className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-stone-50 cursor-pointer"
                         >
-                          <span className="truncate font-medium text-stone-800">{fabric.label}</span>
+                          <span className="truncate font-medium text-stone-800 capitalize">{fabric.label}</span>
                           <div className="flex items-center gap-1.5 shrink-0 pl-2">
                             <span className="text-[10px] text-stone-400">({fabric.count})</span>
                             <input
@@ -692,7 +748,7 @@ export function HorizontalFilterBar({
                 <div className="absolute top-full left-0 mt-1.5 w-56 rounded-xl bg-white p-3 shadow-xl border border-stone-200 z-50 text-xs">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-100">
                     <span className="font-serif text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                      Occasion
+                      Occasion {isOccasionActive && `(${filters.occasions.length} selected)`}
                     </span>
                     {isOccasionActive && (
                       <button
@@ -706,7 +762,7 @@ export function HorizontalFilterBar({
                   </div>
                   <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
                     {facets.occasions.map((occasion: FacetOption) => {
-                      const checked = filters.occasions.includes(occasion.value)
+                      const checked = isValueChecked(filters.occasions, occasion.value)
                       return (
                         <label
                           key={occasion.value}
@@ -765,6 +821,11 @@ export function HorizontalFilterBar({
               {isStockActive && <CheckIcon className="w-2.5 h-2.5" />}
             </span>
             <span>In stock only</span>
+            {isStockActive && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#3e502a] text-white px-1 text-[10px] font-bold">
+                1
+              </span>
+            )}
           </button>
 
           {/* Clear All Inline Link */}

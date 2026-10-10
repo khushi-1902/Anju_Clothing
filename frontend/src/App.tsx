@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { ShopProvider } from './context/ShopContext'
 import { AnnouncementBar } from './components/AnnouncementBar'
@@ -7,6 +7,7 @@ import { Footer } from './components/Footer'
 import { CartDrawer } from './components/CartDrawer'
 import { WishlistDrawer } from './components/WishlistDrawer'
 import { QuickViewModal } from './components/QuickViewModal'
+import { MobileBottomNav } from './components/MobileBottomNav'
 
 import { HomePage } from './pages/HomePage'
 import { ProductListingPage } from './pages/ProductListingPage'
@@ -14,7 +15,6 @@ import { BestsellersPage } from './pages/BestsellersPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { ContactUsPage } from './pages/ContactUsPage'
 import { AuthPage } from './pages/AuthPage'
-import { TrackOrderPage } from './pages/TrackOrderPage'
 import { OrdersPage } from './pages/OrdersPage'
 
 // Admin Module
@@ -25,6 +25,8 @@ import { AdminProductsPage } from './admin/pages/AdminProductsPage'
 import { AdminOrdersPage } from './admin/pages/AdminOrdersPage'
 import { AdminCustomersPage } from './admin/pages/AdminCustomersPage'
 import { AdminSettingsPage } from './admin/pages/AdminSettingsPage'
+
+import { PoliciesPage } from './pages/PoliciesPage'
 
 function SeoHandler() {
   const location = useLocation()
@@ -41,6 +43,8 @@ function SeoHandler() {
       document.title = `${formatted} Collection | Anju Clothing`
     } else if (path.startsWith('/new-arrivals')) {
       document.title = 'New Arrivals - Latest Indian Ethnic Wear | Anju Clothing'
+    } else if (path.startsWith('/creators-favourite')) {
+      document.title = "Creators' Favourite Collection - Influencer & Stylist Picks | Anju Clothing"
     } else if (path.startsWith('/mega-sale')) {
       document.title = 'Mega Sale - Up to 50% Off Festive Outfits | Anju Clothing'
     } else if (path.startsWith('/bestsellers')) {
@@ -49,12 +53,12 @@ function SeoHandler() {
       document.title = 'All Products & Outfits | Luxury Indian Wear | Anju Clothing'
     } else if (path.startsWith('/contact')) {
       document.title = 'Contact Us & International Orders | Anju Clothing'
+    } else if (path.startsWith('/policies') || path.includes('policy') || path.startsWith('/size-chart') || path.startsWith('/terms')) {
+      document.title = 'Store Policies & Size Guide | Anju Clothing'
     } else if (path.startsWith('/sign-in') || path.startsWith('/login')) {
       document.title = 'Log In | Anju Clothing Luxury Club'
     } else if (path.startsWith('/sign-up') || path.startsWith('/signup')) {
       document.title = 'Create Account | Anju Clothing Luxury Club'
-    } else if (path.startsWith('/track')) {
-      document.title = 'Live Courier & Order Tracking | Anju Clothing'
     } else if (path.startsWith('/orders') || path.startsWith('/account')) {
       document.title = 'My Orders & Account | Anju Clothing'
     }
@@ -71,10 +75,21 @@ function MainContent() {
         <Route path="/all-products" element={<ProductListingPage mode="all-products" />} />
         <Route path="/category/:categorySlug" element={<ProductListingPage mode="category" />} />
         <Route path="/new-arrivals" element={<ProductListingPage mode="new-arrivals" />} />
+        <Route path="/creators-favourite" element={<ProductListingPage mode="creators-favourite" />} />
         <Route path="/mega-sale" element={<ProductListingPage mode="mega-sale" />} />
         <Route path="/bestsellers" element={<BestsellersPage />} />
         <Route path="/product/:productId" element={<ProductDetailPage />} />
         <Route path="/contact" element={<ContactUsPage />} />
+
+        {/* E-Commerce Policies & Size Guide */}
+        <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/shipping-policy" element={<PoliciesPage />} />
+        <Route path="/return-policy" element={<PoliciesPage />} />
+        <Route path="/exchange-policy" element={<PoliciesPage />} />
+        <Route path="/cod-policy" element={<PoliciesPage />} />
+        <Route path="/size-chart" element={<PoliciesPage />} />
+        <Route path="/privacy-policy" element={<PoliciesPage />} />
+        <Route path="/terms" element={<PoliciesPage />} />
 
         {/* E-Commerce Auth (Clerk Integrated) */}
         <Route path="/sign-in" element={<AuthPage initialMode="sign-in" />} />
@@ -84,11 +99,10 @@ function MainContent() {
         <Route path="/login" element={<AuthPage initialMode="sign-in" />} />
         <Route path="/signup" element={<AuthPage initialMode="sign-up" />} />
 
-        {/* Live Order Tracking & Management */}
-        <Route path="/track-order" element={<TrackOrderPage />} />
-        <Route path="/track/:orderNumber" element={<TrackOrderPage />} />
+        {/* Order History & Account */}
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/account" element={<OrdersPage />} />
+        <Route path="/track*" element={<Navigate to="/orders" replace />} />
 
         <Route path="*" element={<HomePage />} />
       </Routes>
@@ -127,7 +141,7 @@ export default function App() {
   return (
     <ShopProvider>
       <SeoHandler />
-      <div className="min-h-screen flex flex-col font-body bg-ivory text-charcoal selection:bg-olive selection:text-white">
+      <div className="min-h-screen flex flex-col font-body bg-ivory text-charcoal selection:bg-olive selection:text-white pb-20 lg:pb-0">
         {/* Top Announcement Bar */}
         <AnnouncementBar />
 
@@ -144,6 +158,9 @@ export default function App() {
         <CartDrawer />
         <WishlistDrawer />
         <QuickViewModal />
+
+        {/* Mobile Bottom Sticky Navigation Bar */}
+        <MobileBottomNav />
       </div>
     </ShopProvider>
   )

@@ -85,75 +85,77 @@ export function AdminCustomersPage() {
   const customerCount = users.filter((u) => u.role === 'CUSTOMER').length
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-charcoal">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-8 sm:pb-12 font-sans text-[#232B1E]">
       
       {/* Toast Alert */}
       {toastMessage && (
         <div
-          className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 ${
+          className={`fixed bottom-4 sm:bottom-6 right-4 sm:right-6 left-4 sm:left-auto z-50 p-3.5 sm:p-4 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-semibold animate-in slide-in-from-bottom-3 duration-200 ${
             toastMessage.type === 'success'
-              ? 'bg-emerald-900 text-white border-emerald-700'
-              : 'bg-red-900 text-white border-red-700'
+              ? 'bg-[#233019] text-white border-[#344426]'
+              : 'bg-rose-900 text-white border-rose-700'
           }`}
         >
-          <span>{toastMessage.type === 'success' ? '✅' : '⚠️'}</span>
-          <span>{toastMessage.text}</span>
+          <span>{toastMessage.type === 'success' ? '✓' : '⚠️'}</span>
+          <span className="flex-1 truncate">{toastMessage.text}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-[#202223] tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-bold text-[#1B2513] tracking-tight">
               Customers & Store Users
             </h1>
-            <span className="px-2.5 py-0.5 bg-[#FAF8F5] border border-[#EBE4D8] rounded-full text-xs font-bold text-[#769055]">
+            <span className="px-2 py-0.5 bg-[#F0F5EB] border border-[#D5DFC9] rounded-md text-xs font-mono font-semibold text-[#4A6333]">
               {users.length} registered
             </span>
           </div>
-          <p className="text-xs text-[#6D7175] mt-0.5">
-            Registered accounts from PostgreSQL database, join dates, order frequency, and role management.
+          <p className="text-xs text-[#5D6F4E] mt-0.5">
+            Manage user accounts, view join dates, and configure admin privileges.
           </p>
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#E1E3E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#6D7175] uppercase tracking-wider">Total Registered Accounts</span>
-          <p className="text-2xl font-bold text-[#202223] mt-1">{users.length}</p>
+      {/* Metric Cards (1 column on mobile, 3 on tablets/desktops) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E3E9DD] shadow-2xs">
+          <span className="text-[11px] font-medium text-[#5D6F4E] uppercase tracking-wider">Total Accounts</span>
+          <p className="text-xl sm:text-2xl font-bold text-[#202E15] mt-1 tabular-nums">{users.length}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#E1E3E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#6D7175] uppercase tracking-wider">👑 Store Administrators</span>
-          <p className="text-2xl font-bold text-amber-900 mt-1">{adminCount}</p>
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E3E9DD] shadow-2xs">
+          <span className="text-[11px] font-medium text-[#5D6F4E] uppercase tracking-wider">👑 Administrators</span>
+          <p className="text-xl sm:text-2xl font-bold text-amber-900 mt-1 tabular-nums">{adminCount}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#E1E3E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#6D7175] uppercase tracking-wider">🛍️ Active Customers</span>
-          <p className="text-2xl font-bold text-[#769055] mt-1">{customerCount}</p>
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E3E9DD] shadow-2xs">
+          <span className="text-[11px] font-medium text-[#5D6F4E] uppercase tracking-wider">🛍️ Active Customers</span>
+          <p className="text-xl sm:text-2xl font-bold text-[#4A6333] mt-1 tabular-nums">{customerCount}</p>
         </div>
       </div>
 
       {/* Filter Bar & Search */}
-      <div className="bg-white p-4 rounded-xl border border-[#E1E3E5] shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <form onSubmit={handleSearchSubmit} className="w-full sm:max-w-md flex gap-2">
+      <div className="bg-white p-3 rounded-xl border border-[#E3E9DD] shadow-2xs flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center justify-between">
+        <form onSubmit={handleSearchSubmit} className="flex-1 flex gap-2">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-2.5 text-gray-400 text-xs">🔍</span>
+            <svg className="w-4 h-4 text-[#7A8E6A] absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
             <input
               type="text"
               placeholder="Search by customer name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-xs bg-[#FAF8F5] border border-gray-300 rounded-lg focus:outline-none focus:border-[#769055] focus:bg-white transition-colors"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:outline-none focus:border-[#769055] focus:bg-white transition-all text-[#232B1E]"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-[#202223] text-white text-xs font-bold rounded-lg hover:bg-black transition-colors cursor-pointer"
+            className="px-3.5 py-2 bg-[#769055] hover:bg-[#5e7343] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0"
           >
-            Filter
+            Search
           </button>
           {search && (
             <button
@@ -162,132 +164,172 @@ export function AdminCustomersPage() {
                 setSearch('')
                 setRoleFilter('all')
               }}
-              className="px-3 py-2 text-xs text-gray-500 hover:text-gray-800 font-semibold cursor-pointer"
+              className="px-2.5 py-2 text-xs text-[#7A8E6A] hover:text-[#232B1E] transition-colors cursor-pointer shrink-0"
             >
               Reset
             </button>
           )}
         </form>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs text-gray-500 font-semibold hidden sm:inline">Role:</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#5D6F4E] font-medium hidden sm:inline shrink-0">Filter Role:</span>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 text-xs bg-[#FAF8F5] border border-gray-300 rounded-lg focus:outline-none focus:border-[#769055] font-medium text-charcoal"
+            className="w-full sm:w-auto px-3 py-2 text-xs bg-[#F7F9F5] border border-[#D5DFC9] rounded-lg focus:outline-none focus:border-[#769055] font-semibold text-[#232B1E]"
           >
             <option value="all">All Roles</option>
             <option value="ADMIN">👑 Administrators</option>
-            <option value="CUSTOMER">Customers</option>
+            <option value="CUSTOMER">🛍️ Customers</option>
           </select>
         </div>
       </div>
 
-      {/* Users Data Table */}
-      <div className="bg-white rounded-xl border border-[#E1E3E5] shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Users Section */}
+      <div className="bg-white rounded-xl border border-[#E3E9DD] shadow-2xs overflow-hidden">
+        
+        {/* Mobile View: Customer Cards */}
+        <div className="block sm:hidden divide-y divide-[#EBEFE6]">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-3.5 space-y-2 animate-pulse">
+                <div className="h-4 w-32 bg-[#F0F5EB] rounded" />
+                <div className="h-3 w-48 bg-[#F0F5EB] rounded" />
+              </div>
+            ))
+          ) : users.length > 0 ? (
+            users.map((u) => {
+              const isCurrentUser = currentEmail && u.email?.toLowerCase() === currentEmail
+              const isAdmin = u.role === 'ADMIN'
+
+              return (
+                <div key={u.id || u.clerkUserId} className="p-3.5 space-y-2.5 hover:bg-[#F9FAF7] transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-[#F0F5EB] border border-[#D5DFC9] text-[#4A6333] font-bold text-xs flex items-center justify-center shrink-0">
+                        {(u.name?.[0] || u.email?.[0] || 'U').toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-[#1B2513] truncate">
+                          {u.name || 'Anonymous User'}
+                          {isCurrentUser && <span className="ml-1 text-[10px] text-[#769055]">(You)</span>}
+                        </p>
+                        <p className="text-[11px] text-[#7A8E6A] font-mono truncate">{u.email}</p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        isAdmin
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          : 'bg-[#F0F5EB] text-[#4A6333] border border-[#D5DFC9]'
+                      }`}
+                    >
+                      {isAdmin ? '👑 ADMIN' : 'CUSTOMER'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-[#5D6F4E] pt-1 border-t border-[#EBEFE6]">
+                    <span>Joined: {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    
+                    {!isCurrentUser && (
+                      <button
+                        onClick={() => handleOpenRoleModal(u, isAdmin ? 'CUSTOMER' : 'ADMIN')}
+                        className={`text-xs font-bold underline cursor-pointer ${
+                          isAdmin ? 'text-rose-700 hover:text-rose-900' : 'text-[#769055] hover:text-[#5e7343]'
+                        }`}
+                      >
+                        {isAdmin ? 'Demote' : 'Promote to Admin'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="py-12 text-center text-[#7A8E6A] text-xs p-4">
+              <p className="font-semibold text-[#202E15]">No customer accounts found</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#FAF8F5] border-b border-[#EBE4D8] text-[11px] font-bold text-[#6D7175] uppercase tracking-wider">
+              <tr className="bg-[#F7F9F5] border-b border-[#EBEFE6] text-[11px] font-semibold text-[#5D6F4E] uppercase tracking-wider">
                 <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Joined Date</th>
-                <th className="py-3 px-4 text-center">Orders Placed</th>
-                <th className="py-3 px-4 text-right">Lifetime Spend</th>
-                <th className="py-3 px-4 text-right">Role Action</th>
+                <th className="py-3 px-4">Joined</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[#EBEFE6]">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="py-3.5 px-4"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
-                    <td className="py-3.5 px-4 text-center"><div className="h-4 w-12 bg-gray-200 rounded mx-auto" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-16 bg-gray-200 rounded ml-auto" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-6 w-24 bg-gray-200 rounded ml-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-32 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-44 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-[#F0F5EB] rounded" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 bg-[#F0F5EB] rounded ml-auto" /></td>
                   </tr>
                 ))
               ) : users.length > 0 ? (
                 users.map((u) => {
-                  const isSelf = currentEmail && u.email.toLowerCase() === currentEmail
+                  const isCurrentUser = currentEmail && u.email?.toLowerCase() === currentEmail
                   const isAdmin = u.role === 'ADMIN'
 
                   return (
-                    <tr key={u.id || u.clerkUserId} className="hover:bg-[#FAF8F5]/80 transition-colors group">
-                      
-                      {/* User Info */}
+                    <tr key={u.id || u.clerkUserId} className="hover:bg-[#F9FAF7] transition-colors">
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#769055]/15 border border-[#769055] flex items-center justify-center font-bold text-xs text-[#769055] shrink-0">
-                            {(u.name?.[0] || u.email[0] || 'U').toUpperCase()}
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-[#F0F5EB] border border-[#D5DFC9] text-[#4A6333] font-bold text-xs flex items-center justify-center shrink-0">
+                            {(u.name?.[0] || u.email?.[0] || 'U').toUpperCase()}
                           </div>
-                          <div className="min-w-0 max-w-xs">
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-bold text-[#202223] truncate">
-                                {u.name || 'Registered User'}
-                              </p>
-                              {isSelf && (
-                                <span className="text-[9px] bg-blue-100 text-blue-900 font-extrabold px-1.5 py-0.2 rounded">
-                                  You
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-[#6D7175] font-mono truncate">{u.email}</p>
-                          </div>
+                          <span className="font-semibold text-[#1B2513]">
+                            {u.name || 'Anonymous User'}
+                            {isCurrentUser && (
+                              <span className="ml-1.5 text-[10px] text-[#769055] font-normal">(You)</span>
+                            )}
+                          </span>
                         </div>
                       </td>
-
-                      {/* Role Badge */}
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#5D6F4E]">
+                        {u.email}
+                      </td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
                             isAdmin
-                              ? 'bg-amber-100/70 border-amber-300 text-amber-950'
-                              : 'bg-gray-100 border-gray-300 text-gray-700'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-[#F0F5EB] text-[#4A6333] border border-[#D5DFC9]'
                           }`}
                         >
                           {isAdmin ? '👑 ADMIN' : 'CUSTOMER'}
                         </span>
                       </td>
-
-                      {/* Joined Date */}
-                      <td className="py-3.5 px-4 text-[#6D7175] whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-[#5D6F4E] text-[11px] whitespace-nowrap">
                         {new Date(u.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
                         })}
                       </td>
-
-                      {/* Orders Count */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="font-bold text-[#202223]">{u.orderCount || 0}</span>
-                      </td>
-
-                      {/* Lifetime Spend */}
-                      <td className="py-3.5 px-4 text-right font-bold text-[#202223]">
-                        {u.totalSpent > 0 ? `₹${u.totalSpent.toLocaleString('en-IN')}` : '—'}
-                      </td>
-
-                      {/* Action: Promote to ADMIN or Demote */}
                       <td className="py-3.5 px-4 text-right">
-                        {isAdmin ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenRoleModal(u, 'CUSTOMER')}
-                            className="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-                          >
-                            Demote to Customer
-                          </button>
+                        {isCurrentUser ? (
+                          <span className="text-[11px] text-[#7A8E6A] italic">Current Session</span>
                         ) : (
                           <button
-                            type="button"
-                            onClick={() => handleOpenRoleModal(u, 'ADMIN')}
-                            className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1 ml-auto"
+                            onClick={() => handleOpenRoleModal(u, isAdmin ? 'CUSTOMER' : 'ADMIN')}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                              isAdmin
+                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                                : 'bg-[#F0F5EB] hover:bg-[#E3EBD9] text-[#3E522B]'
+                            }`}
                           >
-                            <span>👑 Make Admin</span>
+                            {isAdmin ? 'Demote to Customer' : 'Promote to Admin'}
                           </button>
                         )}
                       </td>
@@ -296,10 +338,8 @@ export function AdminCustomersPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-500">
-                    <p className="text-2xl mb-2">👤</p>
-                    <p className="font-bold text-charcoal">No users found</p>
-                    <p className="text-xs text-gray-400 mt-1">No user records match your search.</p>
+                  <td colSpan={5} className="py-12 text-center text-[#7A8E6A] text-xs">
+                    <p className="font-semibold text-[#202E15]">No customer accounts found</p>
                   </td>
                 </tr>
               )}
@@ -308,37 +348,27 @@ export function AdminCustomersPage() {
         </div>
       </div>
 
-      {/* Role Change Confirmation Modal */}
+      {/* Role Action Confirmation Modal */}
       {targetUser && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-amber-100 text-center space-y-4">
-            <div className="w-12 h-12 bg-amber-50 border border-amber-200 text-amber-800 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
-              👑
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-sm w-full space-y-4 shadow-2xl border border-[#E3E9DD]">
+            <div className="w-10 h-10 rounded-full bg-[#F0F5EB] text-[#4A6333] flex items-center justify-center mx-auto text-lg">
+              {newRole === 'ADMIN' ? '👑' : '👤'}
             </div>
-
-            <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-[#202223]">
-                {newRole === 'ADMIN' ? 'Promote to Administrator?' : 'Demote to Customer?'}
+            <div className="text-center space-y-1">
+              <h3 className="font-bold text-sm text-[#1B2513]">
+                {newRole === 'ADMIN' ? 'Promote to Administrator' : 'Demote to Customer'}
               </h3>
-              <p className="text-xs text-[#6D7175] leading-relaxed">
-                {newRole === 'ADMIN' ? (
-                  <>
-                    Are you sure you want to promote <strong className="text-charcoal font-bold">{targetUser.email}</strong> to <strong className="text-amber-900">ADMIN</strong>? They will have full access to manage products, orders, and customer accounts.
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to revoke admin privileges for <strong className="text-charcoal font-bold">{targetUser.email}</strong>? They will be demoted to standard CUSTOMER role.
-                  </>
-                )}
+              <p className="text-xs text-[#5D6F4E]">
+                Are you sure you want to change the role for <strong className="text-[#1B2513]">{targetUser.email}</strong> to <strong className="text-[#1B2513]">{newRole}</strong>?
               </p>
             </div>
-
-            <div className="pt-2 flex gap-2.5">
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setTargetUser(null)}
                 disabled={updating}
-                className="flex-1 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-charcoal text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                className="flex-1 py-2 text-xs font-semibold bg-[#F0F5EB] hover:bg-[#E3EBD9] text-[#202E15] rounded-lg transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -346,18 +376,17 @@ export function AdminCustomersPage() {
                 type="button"
                 onClick={handleConfirmRoleChange}
                 disabled={updating}
-                className={`flex-1 py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-sm ${
-                  newRole === 'ADMIN'
-                    ? 'bg-amber-600 hover:bg-amber-700 disabled:opacity-50'
-                    : 'bg-[#202223] hover:bg-black disabled:opacity-50'
+                className={`flex-1 py-2 text-xs font-semibold text-white rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50 ${
+                  newRole === 'ADMIN' ? 'bg-[#769055] hover:bg-[#5e7343]' : 'bg-rose-700 hover:bg-rose-800'
                 }`}
               >
-                {updating ? 'Updating...' : newRole === 'ADMIN' ? 'Yes, Make Admin' : 'Yes, Demote'}
+                {updating ? 'Saving...' : 'Confirm'}
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

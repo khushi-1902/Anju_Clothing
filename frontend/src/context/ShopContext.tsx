@@ -1,9 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Product, CartItem, PageType, ShopUser, SignupPayload } from '../types'
+import { PRODUCTS } from '../data/products'
+import { Coupon, fetchCoupons, validateCoupon } from '../lib/api'
 
 const USERS_KEY = 'anju_users'
 const SESSION_KEY = 'anju_session'
+const COUPON_KEY = 'anju_applied_coupon'
+
+export interface AppliedCoupon {
+  code: string
+  description: string
+  discountType: 'PERCENTAGE' | 'FLAT'
+  discountValue: number
+  discountAmount: number
+  minOrderAmount: number
+  maxDiscountAmount: number | null
+}
 
 interface StoredUser extends ShopUser {
   password: string
@@ -62,8 +75,9 @@ interface ShopContextType {
 
   // Wishlist
   wishlist: string[]
-  toggleWishlist: (productId: string) => void
-  isInWishlist: (productId: string) => boolean
+  wishlistProducts: Product[]
+  toggleWishlist: (productOrId: Product | string | number) => void
+  isInWishlist: (productId: string | number | undefined | null) => boolean
   wishlistCount: number
   isWishlistOpen: boolean
   setIsWishlistOpen: (open: boolean) => void
@@ -89,6 +103,16 @@ interface ShopContextType {
     announcementText?: string
   }
   refreshShippingSettings: () => Promise<void>
+
+  // Coupons
+  appliedCoupon: AppliedCoupon | null
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>
+  removeCoupon: () => void
+  availableCoupons: Coupon[]
+  couponLoading: boolean
+  cartDiscountAmount: number
+  cartTotalAfterDiscount: number
+  refreshCoupons: () => Promise<void>
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined)
@@ -103,7 +127,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (path.startsWith('/bestsellers')) return 'bestsellers'
     if (path.startsWith('/product')) return 'product-detail'
     if (path.startsWith('/contact')) return 'contact'
-    if (path.startsWith('/track')) return 'track-order'
     if (path.startsWith('/orders')) return 'orders'
     if (path.startsWith('/sign-in') || path.startsWith('/login')) return 'login'
     if (path.startsWith('/sign-up') || path.startsWith('/signup')) return 'signup'
@@ -118,7 +141,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(() => extractProductId(location.pathname))
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      return sp.get('q') || sp.get('search') || ''
+    } catch {
+      return ''
+    }
+  })
+
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get('q') || new URLSearchParams(location.search).get('search')
+    if (q !== null) {
+      setSearchQuery(q)
+    }
+  }, [location.search])
 
   useEffect(() => {
     const prodId = extractProductId(location.pathname)
@@ -145,6 +182,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   })
 
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('anju_wishlist_products')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isWishlistOpen, setIsWishlistOpen] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
@@ -161,13 +207,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     announcementText?: string
   }>({
     defaultCourier: 'Blue Dart Express',
-    flatFee: 99,
-    freeThreshold: 1999,
+    flatFee: 0,
+    freeThreshold: 0,
     estimatedDelivery: '3–5 Business Days',
     codAdvanceAmount: 200,
     supportPhone: '+91 9625923308',
     supportEmail: 'orders@anjuclothing.com',
-    announcementText: '✦ Complimentary Express Shipping on Orders Above ₹1,999 ✦',
+    announcementText: '✦ 100% Free Express Shipping on All Online Prepaid Orders ✦',
   })
 
   const refreshShippingSettings = async () => {
@@ -182,9 +228,39 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // --- Real Backend Coupons State ---
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(() => {
+    try {
+      const saved = localStorage.getItem(COUPON_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([])
+  const [couponLoading, setCouponLoading] = useState(false)
+
+  const refreshCoupons = async () => {
+    try {
+      const list = await fetchCoupons()
+      setAvailableCoupons(list)
+    } catch (err) {
+      console.warn('Could not load coupons:', err)
+    }
+  }
+
   useEffect(() => {
     refreshShippingSettings()
+    refreshCoupons()
   }, [])
+
+  useEffect(() => {
+    if (appliedCoupon) {
+      localStorage.setItem(COUPON_KEY, JSON.stringify(appliedCoupon))
+    } else {
+      localStorage.removeItem(COUPON_KEY)
+    }
+  }, [appliedCoupon])
 
   useEffect(() => {
     try {
@@ -201,6 +277,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // ignore storage errors
     }
   }, [wishlist])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('anju_wishlist_products', JSON.stringify(wishlistProducts))
+    } catch {
+      // ignore storage errors
+    }
+  }, [wishlistProducts])
 
   // Scroll to top on page change
   useEffect(() => {
@@ -247,9 +331,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         break
       case 'orders':
         navigate('/orders')
-        break
-      case 'track-order':
-        navigate('/track-order')
         break
       case 'account':
         navigate('/account')
@@ -301,18 +382,121 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setCart([])
+    setAppliedCoupon(null)
   }
 
-  const toggleWishlist = (productId: string) => {
-    setWishlist(prev =>
-      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
-    )
+  const toggleWishlist = (item: Product | string | number) => {
+    if (!item) return
+    const isProductObj = typeof item === 'object' && 'id' in item
+    const productId = isProductObj ? String(item.id) : String(item)
+
+    const isAlreadyIn = wishlist.some(id => String(id).toLowerCase() === productId.toLowerCase())
+
+    if (isAlreadyIn) {
+      setWishlist(prev => prev.filter(id => String(id).toLowerCase() !== productId.toLowerCase()))
+      setWishlistProducts(prev => prev.filter(p => String(p.id).toLowerCase() !== productId.toLowerCase()))
+    } else {
+      setWishlist(prev => [...prev, productId])
+      if (isProductObj) {
+        setWishlistProducts(prev => {
+          const exists = prev.some(p => String(p.id).toLowerCase() === productId.toLowerCase())
+          return exists ? prev : [...prev, item]
+        })
+      } else {
+        const foundFallback = PRODUCTS.find(p => String(p.id).toLowerCase() === productId.toLowerCase())
+        if (foundFallback) {
+          setWishlistProducts(prev => {
+            const exists = prev.some(p => String(p.id).toLowerCase() === productId.toLowerCase())
+            return exists ? prev : [...prev, foundFallback]
+          })
+        }
+      }
+    }
   }
 
-  const isInWishlist = (productId: string) => wishlist.includes(productId)
+  const isInWishlist = (productId: string | number | undefined | null) => {
+    if (!productId) return false
+    const sId = String(productId).toLowerCase()
+    return wishlist.some(id => String(id).toLowerCase() === sId)
+  }
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
   const cartSubtotal = cart.reduce((total, item) => total + item.product.price * item.quantity, 0)
+
+  // Dynamically update discount or clear coupon if subtotal changes
+  useEffect(() => {
+    if (!appliedCoupon) return
+
+    if (cartSubtotal <= 0) {
+      setAppliedCoupon(null)
+      return
+    }
+
+    if (cartSubtotal < appliedCoupon.minOrderAmount) {
+      // Subtotal dropped below the coupon's minimum spend
+      setAppliedCoupon(null)
+      return
+    }
+
+    if (appliedCoupon.discountType === 'PERCENTAGE') {
+      const calculated = Math.round((cartSubtotal * appliedCoupon.discountValue) / 100)
+      const capped = appliedCoupon.maxDiscountAmount ? Math.min(calculated, appliedCoupon.maxDiscountAmount) : calculated
+      if (capped !== appliedCoupon.discountAmount) {
+        setAppliedCoupon(prev => prev ? { ...prev, discountAmount: capped } : null)
+      }
+    } else {
+      const capped = Math.min(appliedCoupon.discountValue, cartSubtotal)
+      if (capped !== appliedCoupon.discountAmount) {
+        setAppliedCoupon(prev => prev ? { ...prev, discountAmount: capped } : null)
+      }
+    }
+  }, [cartSubtotal, appliedCoupon?.code, appliedCoupon?.discountValue, appliedCoupon?.discountType])
+
+  const cartDiscountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
+  const cartTotalAfterDiscount = Math.max(0, cartSubtotal - cartDiscountAmount)
+
+  const applyCoupon = async (code: string): Promise<{ success: boolean; message: string }> => {
+    const cleanCode = code.trim().toUpperCase()
+    if (!cleanCode) {
+      return { success: false, message: 'Please enter a coupon code.' }
+    }
+    if (cartSubtotal <= 0) {
+      return { success: false, message: 'Your cart is empty. Add items before applying a coupon.' }
+    }
+
+    setCouponLoading(true)
+    try {
+      const result = await validateCoupon(cleanCode, cartSubtotal)
+      if (!result.valid || !result.coupon) {
+        return { success: false, message: result.error || 'Invalid or expired coupon.' }
+      }
+
+      const applied: AppliedCoupon = {
+        code: result.coupon.code,
+        description: result.coupon.description,
+        discountType: result.coupon.discountType,
+        discountValue: result.coupon.discountValue,
+        discountAmount: result.discountAmount || 0,
+        minOrderAmount: result.coupon.minOrderAmount,
+        maxDiscountAmount: result.coupon.maxDiscountAmount,
+      }
+
+      setAppliedCoupon(applied)
+      return {
+        success: true,
+        message: result.message || `Coupon "${applied.code}" applied! You saved ₹${applied.discountAmount.toLocaleString('en-IN')}.`,
+      }
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to validate coupon.' }
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null)
+  }
+
   const wishlistCount = wishlist.length
 
   const openCart = () => {
@@ -413,6 +597,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         openCart,
         closeCart,
         wishlist,
+        wishlistProducts,
         toggleWishlist,
         isInWishlist,
         wishlistCount,
@@ -425,6 +610,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         selectedProduct: undefined,
         shippingSettings,
         refreshShippingSettings,
+        appliedCoupon,
+        applyCoupon,
+        removeCoupon,
+        availableCoupons,
+        couponLoading,
+        cartDiscountAmount,
+        cartTotalAfterDiscount,
+        refreshCoupons,
       }}
     >
       {children}
